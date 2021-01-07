@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import * as util from "./js/util.js";
+      import * as THREE from "./node_modules/three/build/three.module.js";
+      import { OrbitControls } from "./node_modules/three/examples/jsm/controls/OrbitControls.js";
+
+      const scene = util.initScene();
+      const stats = util.initStats();
+      const camera = util.initCamera();
+      const renderer = util.initRender();
+      window.onresize = util.WinReSize(renderer, camera);
+      const controls = new OrbitControls(camera, renderer.domElement);
+      util.addAxisHelper(scene);
+
+      // 灯光
+      // util.addAmbientLight(scene);
+      util.addDirectionalLight(scene);
+
+      // 渲染函数
+      const render = () => {
+        renderer.render(scene, camera);
+        stats.update();
+
+        var t = Date.now() / 1000;
+        var r = 25.0;
+        var lx = r * Math.cos(t);
+        var lz = r * Math.sin(t);
+        var ly = 5.0 + 5.0 * Math.sin(t / 4.0);
+        const rectLight = scene.getObjectByName("rectLight");
+        rectLight.lookAt(0, 0, 0);
+        scene.getObjectByName("rectLight").position.set(lx, ly + 20, lz);
+        requestAnimationFrame(render);
+      };
+
+      const main = () => {
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        var ambient = new THREE.AmbientLight("#ffffff", 0.1);
+        scene.add(ambient);
+
+        // 添加平面光
+        const rectLight = new THREE.RectAreaLight("#ffffff", 50, 15, 15);
+        rectLight.name = "rectLight";
+        rectLight.position.set(50, 50, 50);
+        rectLight.castShadow = true;
+        rectLight.lookAt(0, 0, 0);
+        scene.add(rectLight);
+
+        // 添加显示平面光面板的材质
+        var rectLightMesh = new THREE.Mesh(
+          new THREE.PlaneBufferGeometry(),
+          new THREE.MeshBasicMaterial({
+            side: THREE.DoubleSide,
+          })
+        );
+        rectLightMesh.scale.x = 30;
+        rectLightMesh.scale.y = 30;
+        rectLight.add(rectLightMesh);
+
+        // 添加地板
+        var geoFloor = new THREE.BoxBufferGeometry(1000, 0.1, 1000);
+        var matStdFloor = new THREE.MeshStandardMaterial({
+          color: "#808080",
+        });
+        var mshStdFloor = new THREE.Mesh(geoFloor, matStdFloor);
+        mshStdFloor.receiveShadow = true;
+        mshStdFloor.castShadow = true;
+        mshStdFloor.position.y = -5;
+        scene.add(mshStdFloor);
+
+        // 添加立方体
+        const geometry = new THREE.BoxGeometry(10, 10, 10);
+        const material = new THREE.MeshStandardMaterial({ color: 0x00ffff });
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        scene.add(mesh);
+      };
+      main();
+      render();
+    </script>
+  </body>
+</html>

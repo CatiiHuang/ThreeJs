@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import * as util from "./js/util.js";
+      import * as THREE from "./node_modules/three/build/three.module.js";
+      import { GUI } from "./node_modules/three/examples/jsm/libs/dat.gui.module.js";
+
+      import { OrbitControls } from "./node_modules/three/examples/jsm/controls/OrbitControls.js";
+      import { EffectComposer } from "./node_modules/three/examples/jsm/postprocessing/EffectComposer.js";
+      import { FBXLoader } from "./node_modules/three/examples/jsm/loaders/FBXLoader.js";
+      import { RenderPass } from "./node_modules/three/examples/jsm/postprocessing/RenderPass.js";
+      import { OutlinePass } from "./node_modules/three/examples/jsm/postprocessing/OutlinePass.js";
+      import { ShaderPass } from "./node_modules/three/examples/jsm/postprocessing/ShaderPass.js";
+      import { FXAAShader } from "./node_modules/three/examples/jsm/shaders/FXAAShader.js";
+      import { GLTFLoader } from "./node_modules/three/examples/jsm/loaders/GLTFLoader.js";
+      const scene = util.initScene();
+      const stats = util.initStats();
+      const camera = util.initCamera();
+      const renderer = util.initRender();
+      window.onresize = util.WinReSize(renderer, camera);
+      const controls = new OrbitControls(camera, renderer.domElement);
+      // util.addAxisHelper(scene);
+
+      // 灯光
+      util.addAmbientLight(scene);
+      util.addDirectionalLight(scene);
+
+      const main = () => {
+        // 参数
+        const params = {
+          edgeStrength: 3.0,
+          edgeGlow: 1.25,
+          edgeThickness: 2,
+          pulsePeriod: 3,
+          usePatternTexture: false,
+        };
+
+        // 几合体
+        const geometry = new THREE.SphereBufferGeometry(10, 48, 24);
+        const material = new THREE.MeshLambertMaterial({
+          color: 0x8d89d4,
+        });
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.receiveShadow = true;
+        mesh.castShadow = true;
+        scene.add(mesh);
+
+        const loader = new FBXLoader();
+        loader.load("/fbx/file.fbx", function (object) {
+          if (object.traverse) {
+            object.traverse(function (child) {
+              if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+                // child.material = material;
+                outlinePass.selectedObjects.push(child);
+                scene.add(child);
+              }
+            });
+          }
+        });
+
+        // 地板
+        // const floorMaterial = new THREE.MeshLambertMaterial({
+        //   side: THREE.DoubleSide,
+        // });
+        // const floorGeometry = new THREE.PlaneBufferGeometry(150, 100);
+        // const floorMesh = new THREE.Mesh(floorGeometry, floorMaterial);
+        // floorMesh.rotation.x -= Math.PI * 0.5;
+        // floorMesh.position.y -= 10;
+        // scene.add(floorMesh);
+        // floorMesh.receiveShadow = true;
+
+        // 后期渲染器
+        const composer = new EffectComposer(renderer);
+        const renderPass = new RenderPass(scene, camera);
+        composer.addPass(renderPass);
+        // 抗锯齿
+        const effectFXAA = new ShaderPass(FXAAShader);
+        effectFXAA.uniforms["resolution"].value.set(
+          1 / window.innerWidth,
+          1 / window.innerHeight
+        );
+        composer.addPass(effectFXAA);
+
+        const outlinePass = new OutlinePass(
+          new THREE.Vector2(window.innerWidth, window.innerHeight),
+          scene,
+          camera
+        );
+        composer.addPass(outlinePass);
+        // glow
+        for (let key in params) {
+          outlinePass[key] = params[key];
+        }
+        outlinePass.selectedObjects = [mesh];
+
+        // GUI
+        initGuiControl(params, outlinePass);
+
+        // 渲染函数
+        const Clock = new THREE.Clock();
+        const render = () => {
+          renderer.render(scene, camera);
+          var delta = Clock.getDelta();
+          composer.render();
+          stats.update();
+
+          requestAnimationFrame(render);
+        };
+        render();
+      };
+
+      const initGuiControl = (params, outlinePass) => {
+        var gui = new GUI({ width: 300 });
+        gui.add(params, "edgeStrength", 0.01, 10).onChange(function (value) {
+          outlinePass.edgeStrength = Number(value);
+        });
+
+        gui.add(params, "edgeGlow", 0.0, 2).onChange(function (value) {
+          outlinePass.edgeGlow = Number(value);
+        });
+
+        gui.add(params, "edgeThickness", 1, 4).onChange(function (value) {
+          outlinePass.edgeThickness = Number(value);
+        });
+
+        gui.add(params, "pulsePeriod", 0.0, 5).onChange(function (value) {
+          outlinePass.pulsePeriod = Number(value);
+        });
+
+        gui.add(params, "usePatternTexture").onChange(function (value) {
+          outlinePass.usePatternTexture = value;
+        });
+
+        var Configuration = function () {
+          this.visibleEdgeColor = "#ffffff";
+          this.hiddenEdgeColor = "#190a05";
+        };
+
+        var conf = new Configuration();
+
+        gui.addColor(conf, "visibleEdgeColor").onChange(function (value) {
+          outlinePass.visibleEdgeColor.set(value);
+        });
+
+        gui.addColor(conf, "hiddenEdgeColor").onChange(function (value) {
+          outlinePass.hiddenEdgeColor.set(value);
+        });
+      };
+
+      main();
+    </script>
+  </body>
+</html>

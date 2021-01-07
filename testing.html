@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+      canvas {
+        border: 1px solid pink;
+        box-sizing: border-box;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      const name = "马达加斯加的企鹅们在快乐的玩耍";
+      const canvas = document.createElement("canvas");
+      const fontSize = 50;
+      const r = fontSize / 2;
+      const margin = fontSize / 2;
+
+      const textMarginleft = 10;
+      const height = fontSize * 2;
+      const width =
+        name.length * fontSize + 2 * margin + r * 2 + textMarginleft;
+
+      canvas.height = height;
+      canvas.width = width;
+      const ctx = canvas.getContext("2d");
+      // out
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(margin + r, height / 2, r, 0, 2 * Math.PI);
+      ctx.strokeStyle = "#c7d6f0";
+      ctx.stroke();
+      ctx.closePath();
+      // inner
+      ctx.beginPath();
+      ctx.arc(margin + r, height / 2, 6, 0, 2 * Math.PI);
+      ctx.fillStyle = "#c7d6f0";
+      ctx.fill();
+      ctx.strokeStyle = "#c7d6f0";
+      ctx.stroke();
+      // font
+      ctx.font = `${fontSize}px Arial`;
+      ctx.textAlign = "start";
+      ctx.textBaseline = "middle";
+      ctx.fillText(name, margin + r * 2 + textMarginleft, height / 2);
+
+      document.body.appendChild(canvas);
+    </script>
+  </body>
+</html>

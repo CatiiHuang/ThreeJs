@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import * as util from "./js/util.js";
+      import * as THREE from "./node_modules/three/build/three.module.js";
+      import { OrbitControls } from "./node_modules/three/examples/jsm/controls/OrbitControls.js";
+      // import { TransformControls } from "./node_modules/three/examples/jsm/controls/TransformControls.js";
+      import { Flow } from "./node_modules/three/examples/jsm/modifiers/CurveModifier.js";
+
+      import { EffectComposer } from "./node_modules/three/examples/jsm/postprocessing/EffectComposer.js";
+      import { RenderPass } from "./node_modules/three/examples/jsm/postprocessing/RenderPass.js";
+      import { AfterimagePass } from "./node_modules/three/examples/jsm/postprocessing/AfterimagePass.js";
+      import { OutlinePass } from "./node_modules/three/examples/jsm/postprocessing/OutlinePass.js";
+
+      const scene = util.initScene();
+      const stats = util.initStats();
+      const camera = util.initCamera();
+      const renderer = util.initRender();
+      window.onresize = util.WinReSize(renderer, camera);
+      const controls = new OrbitControls(camera, renderer.domElement);
+      util.addAxisHelper(scene, 50);
+
+      // 灯光
+      util.addAmbientLight(scene);
+      util.addDirectionalLight(scene);
+
+      //   ----------------------
+      const curveHandles = [];
+      const initialPoints = [
+        { x: 50, y: 0, z: -50 },
+        { x: 50, y: 0, z: 50 },
+        { x: -50, y: 0, z: 50 },
+        { x: -50, y: 0, z: -50 },
+      ];
+      const boxGeometry = new THREE.BoxGeometry(1, 1, 1);
+      const boxMaterial = new THREE.MeshBasicMaterial(0x99ff99);
+      initialPoints.forEach((item) => {
+        const handle = new THREE.Mesh(boxGeometry, boxMaterial);
+        handle.position.copy(item);
+        curveHandles.push(handle);
+        scene.add(handle);
+      });
+      const curve = new THREE.CatmullRomCurve3(
+        curveHandles.map((item) => item.position)
+      );
+      curve.curveType = "centripetal";
+      curve.closed = false;
+      const points = curve.getPoints(50);
+      const line = new THREE.LineLoop(
+        new THREE.BufferGeometry().setFromPoints(points),
+        new THREE.LineBasicMaterial({ color: 0x00ff00 })
+      );
+      scene.add(line);
+
+      const squareGeo = new THREE.BoxGeometry(5, 1, 1);
+      const squareMtl = new THREE.MeshPhongMaterial({
+        color: 0xf01711,
+        flatShading: true,
+      });
+      const squareMesh = new THREE.Mesh(squareGeo, squareMtl);
+
+      const flow = new Flow(squareMesh);
+      flow.updateCurve(0, curve);
+      scene.add(flow.object3D);
+      flow.name = "flowwwww";
+      squareMesh.name = "zzzzzzzzzzzzzzzzz";
+
+      const composer = new EffectComposer(renderer);
+      composer.addPass(new RenderPass(scene, camera));
+      const afterimagePass = new AfterimagePass();
+      // composer.addPass(afterimagePass);
+      // const outlinePass = new OutlinePass(
+      //   new THREE.Vector2(window.innerWidth, window.innerHeight),
+      //   scene,
+      //   camera
+      // );
+      // composer.addPass(outlinePass);
+      //   ----------------------
+
+      // 渲染函数
+      const render = () => {
+        if (flow) {
+          flow.moveAlongCurve(0.001);
+        }
+        renderer.render(scene, camera);
+        // composer.render();
+
+        stats.update();
+        requestAnimationFrame(render);
+      };
+      render();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import * as THREE from "./node_modules/three/build/three.module.js";
+      import { OrbitControls } from "./node_modules/three/examples/jsm/controls/OrbitControls.js";
+      import { EffectComposer } from "./node_modules/three/examples/jsm/postprocessing/EffectComposer.js";
+      import { UnrealBloomPass } from "./node_modules/three/examples/jsm/postprocessing/UnrealBloomPass.js";
+      import { RenderPass } from "./node_modules/three/examples/jsm/postprocessing/RenderPass.js";
+      import { ShaderPass } from "./node_modules/three/examples/jsm/postprocessing/ShaderPass.js";
+
+      const SweepingLightShader = {
+        uniforms: {
+          tDiffuse: { type: "t", value: 1.0 },
+          time: { type: "f", value: -1.0 },
+        },
+        vertexShader: `
+        varying vec2 vUv;
+        varying vec3 iPosition;
+        void main(){
+            vUv = uv;
+            iPosition = position;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    `,
+        fragmentShader: `
+        uniform float time;
+        uniform sampler2D tDiffuse;
+        varying vec2 vUv;
+        varying vec3 iPosition;
+        void main(){
+            vec4 texel = texture2D(tDiffuse, vUv);
+            float x = iPosition.x;
+            float lighty = -x*1.2 + time;
+            float alpha = abs(iPosition.y - lighty);
+            if(alpha < 0.1){
+                float a = 1.0 -  alpha / 0.1;
+                float enda = smoothstep(0.0,1.0,a) + 0.3;
+                gl_FragColor = texel * enda;
+            }else{
+                gl_FragColor = texel * 0.3;
+            }
+        }
+    `,
+      };
+
+      let scene, camera, renderer, composer;
+
+      const params = {
+        exposure: 0,
+        bloomStrength: 1.5,
+        bloomThreshold: 0,
+        bloomRadius: 0,
+      };
+      const init = () => {
+        // 场景
+        scene = new THREE.Scene();
+        // 相机
+        camera = new THREE.PerspectiveCamera(
+          70,
+          window.innerWidth / window.innerHeight,
+          1,
+          100000
+        );
+        camera.position.set(50, 50, 50);
+        camera.position.y = 50;
+        // 渲染器
+        renderer = new THREE.WebGLRenderer({
+          antialias: true,
+        });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+        // 环境光
+        const light = new THREE.AmbientLight(0xffffff, 0.6);
+        light.layers.enable(0);
+        light.layers.enable(1);
+        scene.add(light);
+        // 控制器
+        const controls = new OrbitControls(camera, renderer.domElement);
+        scene.add(new THREE.AxesHelper(100));
+        window.onresize = () => {
+          renderer.setSize(window.innerWidth, window.innerHeight);
+          camera.aspect = window.innerWidth / window.innerHeight;
+          camera.updateProjectionMatrix();
+        };
+      };
+
+      const initComposer = () => {
+        composer = new EffectComposer(renderer);
+        composer.addPass(new RenderPass(scene, camera));
+      };
+
+      let SweepingLightShader2;
+      const main = () => {
+        const geometry = new THREE.BoxGeometry(10, 10, 10);
+        const material = new THREE.MeshLambertMaterial({ color: 0xffff });
+        const mesh = new THREE.Mesh(geometry, material);
+        scene.add(mesh);
+
+        SweepingLightShader2 = new ShaderPass(THREE.SweepingLightShader);
+        console.log(SweepingLightShader2);
+        // composer.addPass(SweepingLightShader2);
+      };
+
+      const render = () => {
+        // if (SweepingLightShader) {
+        //   SweepingLightShader.uniforms["time"].value += 0.01;
+        // }
+        composer.render();
+        requestAnimationFrame(render);
+      };
+      init();
+      initComposer();
+      main();
+      render();
+    </script>
+  </body>
+</html>

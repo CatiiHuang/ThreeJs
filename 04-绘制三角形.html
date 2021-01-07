@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        padding: 0;
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r121/three.min.js"></script>
+    <script src="./js/init.js"></script>
+    <script>
+      const scene = initScene();
+      const camera = initCamera();
+      const renderer = initRender();
+
+      const initObject = () => {
+        const geometry = new THREE.Geometry();
+
+        const color1 = new THREE.Color(0xff0000);
+        const color2 = new THREE.Color(0x00ff00);
+        const color3 = new THREE.Color(0x0000ff);
+        const material = new THREE.MeshBasicMaterial({
+          vertexColors: [],
+          wireframe: false,
+        });
+
+        const p1 = new THREE.Vector3(5, -3, 0);
+        const p2 = new THREE.Vector3(0, 0, 0);
+        const p3 = new THREE.Vector3(-5, -3, 0);
+
+        geometry.vertices.push(p1);
+        geometry.vertices.push(p2);
+        geometry.vertices.push(p3);
+
+        const face = new THREE.Face3(0, 1, 2);
+
+        face.vertexColors[0] = color1;
+        face.vertexColors[1] = color2;
+        face.vertexColors[2] = color3;
+
+        geometry.faces.push(face);
+
+        const mesh = new THREE.Mesh(geometry, material);
+
+        scene.add(mesh);
+      };
+      initObject();
+
+      const render = () => {
+        renderer.render(scene, camera);
+        requestAnimationFrame(render);
+      };
+
+      render();
+    </script>
+  </body>
+</html>

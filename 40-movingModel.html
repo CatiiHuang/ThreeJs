@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import * as util from "./js/util.js";
+      import * as THREE from "./node_modules/three/build/three.module.js";
+      import { OrbitControls } from "./node_modules/three/examples/jsm/controls/OrbitControls.js";
+      import { EffectComposer } from "./node_modules/three/examples/jsm/postprocessing/EffectComposer.js";
+      import { UnrealBloomPass } from "./node_modules/three/examples/jsm/postprocessing/UnrealBloomPass.js";
+      import { ShaderPass } from "./node_modules/three/examples/jsm/postprocessing/ShaderPass.js";
+      import { RenderPass } from "./node_modules/three/examples/jsm/postprocessing/RenderPass.js";
+      import { GLTFLoader } from "./node_modules/three/examples/jsm/loaders/GLTFLoader.js";
+      import { Flow } from "./node_modules/three/examples/jsm/modifiers/CurveModifier.js";
+      const scene = util.initScene();
+      const stats = util.initStats();
+      const camera = util.initCamera(200);
+      const renderer = util.initRender();
+      let flow = null;
+      window.onresize = util.WinReSize(renderer, camera);
+      const controls = new OrbitControls(camera, renderer.domElement);
+      util.addAxisHelper(scene);
+
+      // 灯光
+      util.addAmbientLight(scene);
+      util.addDirectionalLight(scene);
+
+      // 渲染函数
+      const render = () => {
+        if (flow) {
+          flow.moveAlongCurve(0.001);
+        }
+        renderer.render(scene, camera);
+        stats.update();
+        requestAnimationFrame(render);
+      };
+
+      const LoadGLTF = () => {
+        return new Promise((resolve, reject) => {
+          new GLTFLoader().load("./model/untitled.glb", (gltf) => {
+            resolve(gltf.scene.children[0]);
+          });
+        });
+      };
+
+      const main = async () => {
+        var arc = new THREE.ArcCurve(0, 0, 100, 0, 2 * Math.PI);
+        const ps = arc.getPoints(50).map((item) => {
+          return new THREE.Vector3(item.x, item.y, 0);
+        });
+        var curve = new THREE.CatmullRomCurve3(ps, true);
+
+        var points = curve.getPoints(100);
+        var geometry = new THREE.BufferGeometry().setFromPoints(points);
+
+        var material = new THREE.LineBasicMaterial({ color: 0xff0000 });
+
+        // Create the final object to add to the scene
+        var ellipse = new THREE.Line(geometry, material);
+        scene.add(ellipse);
+
+        const satellite = await LoadGLTF();
+        // satellite.scale.set(1, 1, 1);
+        satellite.rotateY(Math.PI / 2);
+        flow = new Flow(satellite);
+        flow.updateCurve(0, curve);
+        scene.add(flow.object3D);
+      };
+
+      main();
+      render();
+    </script>
+  </body>
+</html>

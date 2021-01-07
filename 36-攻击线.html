@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: url(http://launchit.shanemielke.com/img/universe.jpg);
+        background-size: cover;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import * as THREE from "./node_modules/three/build/three.module.js";
+      import { OrbitControls } from "./node_modules/three/examples/jsm/controls/OrbitControls.js";
+      import { Line2 } from "./node_modules/three/examples/jsm/lines/Line2.js";
+      import { LineMaterial } from "./node_modules/three/examples/jsm/lines/LineMaterial.js";
+      import { LineGeometry } from "./node_modules/three/examples/jsm/lines/LineGeometry.js";
+      import { Flow } from "./node_modules/three/examples/jsm/modifiers/CurveModifier.js";
+
+      let scene, camera, renderer, composer;
+      const flows = [];
+      const init = () => {
+        // 场景
+        scene = new THREE.Scene();
+        // 相机
+        camera = new THREE.PerspectiveCamera(
+          70,
+          window.innerWidth / window.innerHeight,
+          1,
+          100000
+        );
+        camera.position.set(50, 50, 50);
+        camera.position.y = 50;
+        // 渲染器
+        renderer = new THREE.WebGLRenderer({
+          antialias: true,
+          alpha: true,
+        });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+        // 环境光
+        const light = new THREE.AmbientLight(0xffffff, 1);
+        scene.add(light);
+        // 控制器
+        const controls = new OrbitControls(camera, renderer.domElement);
+        scene.add(new THREE.AxesHelper(100));
+        window.onresize = () => {
+          renderer.setSize(window.innerWidth, window.innerHeight);
+          camera.aspect = window.innerWidth / window.innerHeight;
+          camera.updateProjectionMatrix();
+        };
+      };
+
+      const initComposer = () => {};
+
+      // 创建 三维三次贝塞尔曲线
+      const createCubicBezierCurve3 = (p1, p2) => {
+        // 中点
+        const midPoint = new THREE.Vector3(
+          (p1.x + p2.x) / 2,
+          (p1.y + p2.y) / 2,
+          (p1.z + p2.z) / 2
+        );
+        // p1 四分之一中点
+        const midPoint1 = new THREE.Vector3(
+          (p1.x + midPoint.x) / 2,
+          (p1.y + midPoint.y) / 2,
+          (p1.z + midPoint.z) / 2
+        );
+        // p2 四分之一中点
+        const midPoint2 = new THREE.Vector3(
+          (p2.x + midPoint.x) / 2,
+          (p2.y + midPoint.y) / 2,
+          (p2.z + midPoint.z) / 2
+        );
+        return new THREE.CubicBezierCurve3(p1, midPoint1.midPoint2, p2);
+      };
+
+      // 创建 三维二次贝塞尔曲线
+      const createBezierCurve3 = (p1, p2) => {
+        const midPoint = new THREE.Vector3(
+          (p1.x + p2.x) / 2 + Math.random() * 10 - 10,
+          (p1.y + p2.y) / 2 + Math.random() * 10 + 10,
+          (p1.z + p2.z) / 2 + Math.random() * 10 - 10
+        );
+        return new THREE.QuadraticBezierCurve3(p1, midPoint, p2);
+      };
+
+      // 创建 创建平滑曲线
+      const createCatmullRomCurve3 = (p1, p2) => {
+        // 中点
+        const midPoint = new THREE.Vector3(
+          (p1.x + p2.x) / 2 + Math.random() * 10 + 10,
+          (p1.y + p2.y) / 2 + Math.random() * 10 + 10,
+          (p1.z + p2.z) / 2 + Math.random() * 10 + 10
+        );
+        return new THREE.CatmullRomCurve3([p1, midPoint, p2]);
+      };
+
+      // 创建 曲线几何体
+      const createCurveMesh = (curve) => {
+        const points = curve.getPoints(50).reduce((arr, item) => {
+          return arr.concat(item.x, item.y, item.z);
+        }, []);
+        const geometry = new LineGeometry();
+        geometry.setPositions(points);
+        const material = new LineMaterial({
+          color: 0xff0000,
+          linewidth: 0.4,
+          transparent: true,
+          opacity: 1,
+          emissiveIntensity: 100,
+        });
+        material.resolution.set(window.innerWidth, window.innerHeight);
+        const line = new Line2(geometry, material);
+        line.computeLineDistances();
+        return line;
+      };
+
+      // 添加攻击
+      const addMovingBox = (curve, mesh) => {
+        const objs = new THREE.Group();
+        for (let i = 0; i < 4; i++) {
+          const flow = new Flow(mesh);
+          flow.updateCurve(0, curve);
+          flows.push(flow);
+          flow.uniforms.flow.value = -1;
+          flow.speed = Math.random() * 0.005 + 0.005;
+          flow.object3D.scale.set(3, 3, 3);
+          objs.add(flow.object3D);
+          scene.add(flow.object3D);
+        }
+        //return objs;
+      };
+
+      const animation = () => {
+        flows.forEach((item) => {
+          item.moveAlongCurve(item.speed);
+        });
+      };
+
+      const main = () => {
+        // 地板
+        const floorPlane = new THREE.Mesh(
+          new THREE.BoxGeometry(100, 1, 100),
+          new THREE.MeshLambertMaterial({
+            color: 0xbbbbbb,
+            side: THREE.DoubleSide,
+          })
+        );
+        scene.add(floorPlane);
+
+        // 添加线段上的运动物体
+        const path = new THREE.Path();
+        path.lineTo(1, 10);
+        path.arc(-1, 0, 1, 0, Math.PI / 2);
+        const points = path.getPoints(30);
+        const boxGeometry = new THREE.LatheGeometry(points, 10, 0, Math.PI * 2);
+        boxGeometry.center();
+        // const boxGeometry = new THREE.BoxGeometry(0.4, 0.2, 0.4);
+        const boxMaterial = new THREE.MeshLambertMaterial({
+          transparent: true,
+          opacity: 0.9,
+          emissive: new THREE.Color(0xffffff),
+          emissiveIntensity: 100,
+          flatShading: true,
+        });
+        const boxMesh = new THREE.Mesh(boxGeometry, boxMaterial);
+
+        // 创路线段
+        const lineboxGroup = new THREE.Group();
+        const lineGroup = new THREE.Group();
+        for (let i = 0; i < 30; i++) {
+          const curve = createBezierCurve3(
+            new THREE.Vector3(30, 0, 30),
+            new THREE.Vector3(-30, 0, -30)
+          );
+          addMovingBox(curve, boxMesh);
+          lineGroup.add(createCurveMesh(curve));
+        }
+
+        scene.add(lineGroup);
+        scene.add(lineboxGroup);
+      };
+
+      const render = () => {
+        animation();
+        renderer.render(scene, camera);
+        requestAnimationFrame(render);
+      };
+      init();
+      initComposer();
+      main();
+      render();
+    </script>
+  </body>
+</html>

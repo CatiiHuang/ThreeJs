@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import * as util from "./js/util.js";
+      import * as THREE from "./node_modules/three/build/three.module.js";
+      import { OrbitControls } from "./node_modules/three/examples/jsm/controls/OrbitControls.js";
+
+      const scene = util.initScene();
+      const stats = util.initStats();
+      const camera = util.initCamera();
+      const renderer = util.initRender();
+      window.onresize = util.WinReSize(renderer, camera);
+      const controls = new OrbitControls(camera, renderer.domElement);
+      util.addAxisHelper(scene);
+
+      const groupLeft = new THREE.Group();
+      const groupRight = new THREE.Group();
+      groupLeft.layers.set(1);
+      groupRight.layers.set(2);
+      console.log(groupRight.layers);
+      scene.add(groupLeft);
+      scene.add(groupRight);
+
+      // 灯光
+      util.addAmbientLight(scene);
+      // util.addDirectionalLight(scene);
+
+      // 渲染函数
+      const render = () => {
+        renderer.render(scene, camera);
+        camera.layers.set(0);
+        stats.update();
+        requestAnimationFrame(render);
+      };
+      render();
+
+      const main = () => {
+        const geometry = new THREE.BoxGeometry(10, 10, 10);
+        const material = new THREE.MeshLambertMaterial({ color: 0xffff });
+        const mesh1 = new THREE.Mesh(geometry, material);
+        mesh1.position.set(20, 0, 0);
+        groupLeft.add(mesh1);
+
+        const mesh2 = mesh1.clone();
+        mesh1.position.set(-20, 0, 0);
+        groupRight.add(mesh2);
+      };
+
+      main();
+      console.log(scene);
+    </script>
+  </body>
+</html>

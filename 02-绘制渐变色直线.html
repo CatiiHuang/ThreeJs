@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        padding: 0;
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r121/three.min.js"></script>
+    <script src="./js/init.js"></script>
+    <script>
+      const scene = initScene();
+      const camera = initCamera();
+      const renderer = initRender();
+
+      const initObject = () => {
+        const geometry = new THREE.Geometry();
+        const material = new THREE.LineBasicMaterial({
+          vertexColors: true,
+        });
+        const color1 = new THREE.Color(0x444444);
+        const color2 = new THREE.Color(0xff0000);
+        const p1 = new THREE.Vector3(-5, 0, 0);
+        const p2 = new THREE.Vector3(5, 0, 0);
+        geometry.vertices.push(p1);
+        geometry.vertices.push(p2);
+        geometry.colors.push(color1, color2);
+        const line = new THREE.Line(geometry, material, THREE.LineSegments);
+        scene.add(line);
+      };
+      initObject();
+
+      const render = () => {
+        renderer.render(scene, camera);
+        requestAnimationFrame(render);
+      };
+
+      render();
+    </script>
+  </body>
+</html>

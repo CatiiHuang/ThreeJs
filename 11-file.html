@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script id="fragment_shader" type="x-shader/x-fragment">
+
+      uniform float time;
+
+      varying vec2 vUv;
+
+      void main( void ) {
+
+          vec2 position = - 1.0 + 2.0 * vUv;
+
+          float red = abs( sin( position.x * position.y + time / 5.0 ) );
+          float green = abs( sin( position.x * position.y + time / 4.0 ) );
+          float blue = abs( sin( position.x * position.y + time / 3.0 ) );
+
+          if(blue<0.5){
+            gl_FragColor = vec4( 0, 0, 0.6 , 0.5 );
+          }else{
+            gl_FragColor = vec4( 0, 0, blue ,0.1  );
+          }
+
+      }
+    </script>
+    <script id="vertexShader" type="x-shader/x-vertex">
+
+      varying vec2 vUv;
+
+      void main()
+      {
+          vUv = uv;
+          vec4 mvPosition = modelViewMatrix * vec4( position, 1 );
+          gl_Position = projectionMatrix * mvPosition;
+      }
+    </script>
+
+    <script type="module">
+      import * as util from "./js/util.js";
+      import * as THREE from "./node_modules/three/build/three.module.js";
+      import { OrbitControls } from "./node_modules/three/examples/jsm/controls/OrbitControls.js";
+      import { FBXLoader } from "./node_modules/three/examples/jsm/loaders/FBXLoader.js";
+      const scene = util.initScene();
+      const stats = util.initStats();
+      const camera = util.initCamera(100000);
+      const renderer = util.initRender();
+      window.onresize = util.WinReSize(renderer, camera);
+      const controls = new OrbitControls(camera, renderer.domElement);
+      util.addAxisHelper(scene);
+
+      // 灯光
+      util.addAmbientLight(scene);
+      util.addDirectionalLight(scene);
+
+      const uniforms1 = {
+        time: { value: 1.0 },
+      };
+
+      let TIME = 10;
+      const clock = new THREE.Clock();
+      // 渲染函数
+      const render = () => {
+        renderer.render(scene, camera);
+        stats.update();
+        const delta = clock.getDelta();
+        uniforms1["time"].value += delta * 5;
+        requestAnimationFrame(render);
+      };
+      render();
+
+      // const material = new THREE.ShaderMaterial({
+      //   uniforms: uniforms1,
+      //   transparent: true,
+      //   vertexShader: document.getElementById("vertexShader").textContent,
+      //   fragmentShader: document.getElementById("fragment_shader").textContent,
+      // });
+
+      const loader = new FBXLoader();
+      loader.load("/fbx/diqiu.fbx", function (object) {
+        console.log(object);
+        // object.children.forEach((item) => {
+        //   if (item.name === "Box1") {
+        //     const texture2 = new THREE.TextureLoader().load(
+        //       "./fbx/Texture/Box1_gradient.png"
+        //     );
+        //     const texture3 = new THREE.TextureLoader().load(
+        //       "./fbx/Texture/Box1_specluar.png"
+        //     );
+        //     const texture4 = new THREE.TextureLoader().load(
+        //       "./fbx/Texture/Box1_Top tex_000.png"
+        //     );
+
+        //     item.material.map = texture2;
+        //     item.material.map = texture3;
+        //     item.material.map = texture4;
+        //     item.material.specularMap = texture2;
+        //   }
+        //   if ((item.name = "Box1_Outline")) {
+        //     item.traverse((it) => {
+        //       console.log(it.material.map);
+        //       // it.material.map = new THREE.TextureLoader().load(
+        //       //   "./fbx/Texture/Box1 Outline.png"
+        //       // );
+        //     });
+        //   }
+        // });
+        scene.add(object);
+      });
+    </script>
+  </body>
+</html>

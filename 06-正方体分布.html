@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script src="/node_modules/three/build/three.js"></script>
+    <script src="/node_modules//three/examples/js/controls/OrbitControls.js"></script>
+    <script src="/js/init.js"></script>
+    <script src="/js/stats.min.js"></script>
+    <script>
+      // 场景初始化
+      const scene = initScene();
+      const camera = initCamera();
+      const renderer = initRender();
+
+      const stats = initStats();
+      scene.background = new THREE.Color(0xf0f0f0);
+
+      const light = new THREE.DirectionalLight(0xffffff, 1);
+      light.position.set(10, 10, 10).normalize();
+      scene.add(light);
+      // 渲染函数
+      const render = () => {
+        renderer.render(scene, camera);
+        animation();
+        stats.update();
+        requestAnimationFrame(render);
+      };
+
+      //   添加模型
+      const initObj = () => {
+        const geometry = new THREE.BoxBufferGeometry(20, 20, 20);
+        for (let i = 0; i < 2000; i++) {
+          const meatrial = new THREE.MeshLambertMaterial({
+            color: Math.random() * 0xffffff, // 随机颜色
+          });
+          const object = new THREE.Mesh(geometry, meatrial);
+
+          object.position.x = Math.random() * 800 - 400;
+          object.position.y = Math.random() * 800 - 400;
+          object.position.z = Math.random() * 800 - 400;
+
+          object.rotation.x = Math.random() * 2 * Math.PI;
+          object.rotation.y = Math.random() * 2 * Math.PI;
+          object.rotation.z = Math.random() * 2 * Math.PI;
+
+          object.scale.x = Math.random() + 0.5;
+          object.scale.y = Math.random() + 0.5;
+          object.scale.z = Math.random() + 0.5;
+          scene.add(object);
+        }
+      };
+
+      // 相机旋转动画
+      let theta = 0;
+      const radius = 100;
+      const animation = () => {
+        theta += 0.1;
+        camera.position.x = radius * Math.sin(THREE.MathUtils.degToRad(theta));
+        camera.position.y = radius * Math.sin(THREE.MathUtils.degToRad(theta));
+        camera.position.z = radius * Math.cos(THREE.MathUtils.degToRad(theta));
+        camera.lookAt(scene.position);
+        camera.updateMatrixWorld();
+      };
+
+      // 执行
+      initObj();
+      render();
+    </script>
+  </body>
+</html>

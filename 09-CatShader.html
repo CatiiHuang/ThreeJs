@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="container"></div>
+    <script src="./node_modules/three/build/three.min.js"></script>
+    <script src="./node_modules//three/examples/js/loaders/OBJLoader.js"></script>
+    <script src="./js/init.js"></script>
+    <script src="./js/stats.min.js"></script>
+    <script src="/node_modules//three/examples/js/controls/OrbitControls.js"></script>
+    <script id="fragment_shader4" type="x-shader/x-fragment">
+
+      uniform float time;
+
+      varying vec2 vUv;
+
+      void main( void ) {
+
+          vec2 position = - 1.0 + 2.0 * vUv;
+
+          float red = abs( sin( position.x * position.y + time / 5.0 ) );
+          float green = abs( sin( position.x * position.y + time / 4.0 ) );
+          float blue = abs( sin( position.x * position.y + time / 3.0 ) );
+          gl_FragColor = vec4( red, green, blue, 1.0 );
+
+      }
+    </script>
+    <script id="vertexShader" type="x-shader/x-vertex">
+
+      varying vec2 vUv;
+
+      void main()
+      {
+          vUv = uv;
+          vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+          gl_Position = projectionMatrix * mvPosition;
+      }
+    </script>
+    <script>
+      const scene = initScene();
+      const camera = initCamera();
+      const renderer = initRender();
+      const controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+      const stats = initStats();
+      scene.background = new THREE.Color(0x000000);
+
+      const dirLight = new THREE.DirectionalLight(0xffffff, 0.125);
+      dirLight.position.set(0, 0, 0).normalize();
+      scene.add(dirLight);
+
+      var light = new THREE.AmbientLight(0x404040); // soft white light
+      scene.add(light);
+
+      const pointLight = new THREE.PointLight(0xffffff, 1.5);
+      pointLight.position.set(100, 100, 90);
+      scene.add(pointLight);
+
+      const uniforms1 = {
+        time: { value: 1.0 },
+      };
+      const params = [["fragment_shader4", uniforms1]];
+
+      const material = new THREE.ShaderMaterial({
+        uniforms: params[0][1],
+        vertexShader: document.getElementById("vertexShader").textContent,
+        fragmentShader: document.getElementById(params[0][0]).textContent,
+      });
+
+      var geometry = new THREE.BoxGeometry(10, 10, 10);
+      var cube = new THREE.Mesh(geometry, material);
+      scene.add(cube);
+
+      const initObj = () => {
+        const objLoader = new THREE.OBJLoader();
+        objLoader.load("/obj/cat.obj", (object) => {
+          const obj = object.clone();
+          obj.scale.multiplyScalar(0.1);
+          obj.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+              child.material = material;
+
+              obj.name = "cat";
+              scene.add(obj);
+            }
+          });
+        });
+      };
+      initObj();
+
+      // 动画
+      const animate = () => {
+        const clock = new THREE.Clock();
+        const delta = clock.getDelta();
+        uniforms1["time"].value += 0.006 * 5;
+        // console.log(uniforms1["time"]);
+      };
+
+      // 渲染函数
+      const render = () => {
+        renderer.render(scene, camera);
+        animate();
+        stats.update();
+        requestAnimationFrame(render);
+      };
+      render();
+    </script>
+  </body>
+</html>

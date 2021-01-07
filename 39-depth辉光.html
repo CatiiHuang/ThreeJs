@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="x-shader/x-vertex" id="vertexshader">
+
+      varying vec2 vUv;
+
+      void main() {
+
+          vUv = uv;
+
+          gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+
+      }
+    </script>
+
+    <script type="x-shader/x-fragment" id="fragmentshader">
+
+      uniform sampler2D baseTexture;
+      uniform sampler2D bloomTexture;
+
+      varying vec2 vUv;
+
+      void main() {
+
+          gl_FragColor = ( texture2D( baseTexture, vUv ) + vec4( 1.0 ) * texture2D( bloomTexture, vUv ) );
+
+      }
+    </script>
+    <script type="module">
+      import * as THREE from "./node_modules/three/build/three.module.js";
+      import { OrbitControls } from "./node_modules/three/examples/jsm/controls/OrbitControls.js";
+      import { EffectComposer } from "./node_modules/three/examples/jsm/postprocessing/EffectComposer.js";
+      import { UnrealBloomPass } from "./node_modules/three/examples/jsm/postprocessing/UnrealBloomPass.js";
+      import { RenderPass } from "./node_modules/three/examples/jsm/postprocessing/RenderPass.js";
+      import { ShaderPass } from "./node_modules/three/examples/jsm/postprocessing/ShaderPass.js";
+      import { FXAAShader } from "./node_modules/three/examples/jsm/shaders/FXAAShader.js";
+
+      let scene, camera, renderer, bloomComposer, finalComposer;
+
+      const ENTIRE_SCENE = 0,
+        BLOOM_SCENE = 1;
+
+      const bloomLayer = new THREE.Layers();
+      bloomLayer.set(BLOOM_SCENE);
+      const darkMaterial = new THREE.MeshBasicMaterial({ color: "black" });
+      const materials = {};
+      const params = {
+        exposure: 0,
+        bloomStrength: 1.5,
+        bloomThreshold: 0,
+        bloomRadius: 0,
+      };
+
+      const init = () => {
+        // 场景
+        scene = new THREE.Scene();
+        // 相机
+        camera = new THREE.PerspectiveCamera(
+          70,
+          window.innerWidth / window.innerHeight,
+          1,
+          100000
+        );
+        camera.position.set(50, 50, 50);
+        camera.position.y = 50;
+        // 渲染器
+        renderer = new THREE.WebGLRenderer({
+          antialias: true,
+        });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.toneMapping = THREE.ReinhardToneMapping;
+        document.body.appendChild(renderer.domElement);
+        // 环境光
+        const light = new THREE.AmbientLight(0xffffff, 0.6);
+        light.layers.enable(0);
+        light.layers.enable(1);
+        scene.add(light);
+        // 控制器
+        const controls = new OrbitControls(camera, renderer.domElement);
+        scene.add(new THREE.AxesHelper(100));
+        window.onresize = () => {
+          renderer.setSize(window.innerWidth, window.innerHeight);
+          camera.aspect = window.innerWidth / window.innerHeight;
+          camera.updateProjectionMatrix();
+        };
+      };
+
+      const initComposer = () => {
+        const effectFXAA = new ShaderPass(FXAAShader);
+        effectFXAA.uniforms["resolution"].value.set(
+          0.6 / window.innerWidth,
+          0.6 / window.innerHeight
+        );
+        effectFXAA.renderToScreen = true;
+        const renderScene = new RenderPass(scene, camera);
+        const bloomPass = new UnrealBloomPass(
+          new THREE.Vector2(window.innerWidth, window.innerHeight),
+          1.5,
+          0.4,
+          0.85
+        );
+        bloomPass.threshold = params.bloomThreshold;
+        bloomPass.strength = params.bloomStrength;
+        bloomPass.radius = params.bloomRadius;
+
+        bloomComposer = new EffectComposer(renderer);
+        bloomComposer.renderToScreen = false;
+        bloomComposer.addPass(renderScene);
+        bloomComposer.addPass(bloomPass);
+        bloomComposer.addPass(effectFXAA);
+
+        const finalPass = new ShaderPass(
+          new THREE.ShaderMaterial({
+            uniforms: {
+              baseTexture: { value: null },
+              bloomTexture: { value: bloomComposer.renderTarget2.texture },
+            },
+            vertexShader: `varying vec2 vUv;void main() {vUv = uv;gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );}`,
+            fragmentShader: `uniform sampler2D baseTexture;uniform sampler2D bloomTexture;varying vec2 vUv;void main() {gl_FragColor = ( texture2D( baseTexture, vUv ) + vec4( 1.0 ) * texture2D( bloomTexture, vUv ) );}`,
+            defines: {},
+          }),
+          "baseTexture"
+        );
+        finalPass.needsSwap = true;
+
+        finalComposer = new EffectComposer(renderer);
+        finalComposer.addPass(renderScene);
+        finalComposer.addPass(finalPass);
+        finalComposer.addPass(effectFXAA);
+      };
+
+      const render = () => {
+        scene.traverse((obj) => {
+          if (obj.isMesh && bloomLayer.test(obj.layers) === false) {
+            materials[obj.uuid] = obj.material;
+            obj.material = darkMaterial;
+          }
+        });
+        bloomComposer.render();
+        scene.traverse((obj) => {
+          if (materials[obj.uuid]) {
+            obj.material = materials[obj.uuid];
+            delete materials[obj.uuid];
+          }
+        });
+        finalComposer.render();
+        requestAnimationFrame(render);
+      };
+
+      const main = () => {
+        init();
+        initComposer();
+
+        const geometry = new THREE.BoxGeometry(20, 20, 10);
+        // 正常方块
+        const normalMtl = new THREE.MeshLambertMaterial({ color: 0x00ffff });
+        const normalBox = new THREE.Mesh(geometry, normalMtl);
+        normalBox.position.z = -5;
+        scene.add(normalBox);
+
+        // 发光方块
+        // const bloomMtl = new THREE.MeshLambertMaterial({ color: 0xff5500 });
+        // const bloomBox = new THREE.Mesh(geometry, bloomMtl);
+        // bloomBox.position.z = 5;
+        // bloomBox.layers.enable(1);
+        // scene.add(bloomBox);
+      };
+      main();
+      render();
+    </script>
+  </body>
+</html>

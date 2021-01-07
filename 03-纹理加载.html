@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r121/three.min.js"></script>
+    <script src="./js/init.js"></script>
+    <script>
+      const scene = initScene();
+      const camera = initCamera(100);
+      const renderer = initRender();
+
+      const geometry = new THREE.PlaneGeometry(12, 12);
+      const texture = new THREE.TextureLoader().load("/img/timg.jpg");
+
+      // 平铺
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      texture.repeat.set(4, 4);
+
+      const material = new THREE.MeshBasicMaterial({
+        map: texture,
+      });
+      const mesh = new THREE.Mesh(geometry, material);
+      scene.add(mesh);
+
+      const render = () => {
+        texture.offset.x += 0.005;
+        renderer.render(scene, camera);
+        requestAnimationFrame(render);
+      };
+      render();
+    </script>
+  </body>
+</html>

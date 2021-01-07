@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import * as util from "./js/util.js";
+      import * as THREE from "./node_modules/three/build/three.module.js";
+
+      import { OrbitControls } from "./node_modules/three/examples/jsm/controls/OrbitControls.js";
+      import { GLTFLoader } from "./node_modules/three/examples/jsm/loaders/GLTFLoader.js";
+      const scene = util.initScene();
+      const stats = util.initStats();
+      const camera = util.initCamera(1000);
+      const renderer = util.initRender();
+      window.onresize = util.WinReSize(renderer, camera);
+      const controls = new OrbitControls(camera, renderer.domElement);
+      util.addAxisHelper(scene, 500);
+
+      // 灯光
+      util.addAmbientLight(scene);
+      util.addDirectionalLight(scene);
+
+      const grid = new THREE.Points(
+        new THREE.PlaneGeometry(1500, 1500, 64, 64),
+        new THREE.PointsMaterial({ color: 0xffffff, size: 1 })
+      );
+      grid.rotation.x = Math.PI / 2;
+      scene.add(grid);
+
+      var mixer = null;
+      let geo = null;
+      const loader = new GLTFLoader();
+      loader.load("/glb/Flamingo.glb", (gltf) => {
+        let object = gltf.scene;
+
+        object.traverse(function (child) {
+          if (child.isMesh) {
+            geo = child.geometry;
+
+            transToPoints(child.geometry);
+            mixer = new THREE.AnimationMixer(object);
+            mixer.clipAction(gltf.animations[0]).play();
+            scene.add(object);
+          }
+        });
+      });
+
+      const transToPoints = (geo) => {
+        console.log(geo);
+        const geometry = new THREE.BufferGeometry();
+        // const positions = geo.morphAttributes.position[13].array;
+        const positions = geo.attributes.position.array;
+        geometry.setAttribute(
+          "position",
+          new THREE.Float32BufferAttribute(positions, 3)
+        );
+        const material = new THREE.PointsMaterial({
+          size: 1,
+          color: 0x00ff00,
+        });
+        const points = new THREE.Points(geometry, material);
+        scene.add(points);
+      };
+
+      // 渲染函数
+      var clock = new THREE.Clock();
+      const render = () => {
+        var delta = clock.getDelta();
+        renderer.render(scene, camera);
+        stats.update();
+        if (mixer != null) {
+          mixer.update(delta);
+        }
+
+        requestAnimationFrame(render);
+      };
+      render();
+    </script>
+  </body>
+</html>

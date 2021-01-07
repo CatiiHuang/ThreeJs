@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        padding: 0;
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="rander"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r121/three.min.js"></script>
+    <script>
+      // 1.定义场景
+      const scene = new THREE.Scene();
+
+      // 2.定义相机 渗透相机
+      const camera = new THREE.PerspectiveCamera(
+        75,
+        window.innerWidth / window.innerHeight,
+        1,
+        1000
+      );
+      camera.position.z = 10;
+
+      // 3.定义渲染器
+      const renderer = new THREE.WebGLRenderer({
+        antialias: true, // 抗锯齿
+      });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.querySelector("#rander").appendChild(renderer.domElement);
+
+      // 4.几合体
+      // 4.1 创建几何体
+      const geometry = new THREE.CubeGeometry(2, 2, 2);
+      // 4.2 创建材质
+      const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+      // 4.3 融合网格模型
+      const cube = new THREE.Mesh(geometry, material);
+      // 4.4 添加进场景
+      scene.add(cube);
+
+      // 5.渲染
+      const render = () => {
+        cube.rotation.x += 0.01;
+        cube.rotation.z += 0.01;
+        renderer.render(scene, camera);
+        requestAnimationFrame(render);
+      };
+      render();
+
+      const AxisHelper = new THREE.AxisHelper(4);
+      scene.add(AxisHelper);
+    </script>
+  </body>
+</html>

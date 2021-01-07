@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import * as util from "./js/util.js";
+      import * as THREE from "./node_modules/three/build/three.module.js";
+      import { OrbitControls } from "./node_modules/three/examples/jsm/controls/OrbitControls.js";
+      import { EffectComposer } from "./node_modules/three/examples/jsm/postprocessing/EffectComposer.js";
+      import { UnrealBloomPass } from "./node_modules/three/examples/jsm/postprocessing/UnrealBloomPass.js";
+      import { ShaderPass } from "./node_modules/three/examples/jsm/postprocessing/ShaderPass.js";
+      import { RenderPass } from "./node_modules/three/examples/jsm/postprocessing/RenderPass.js";
+
+      const scene = util.initScene();
+      const stats = util.initStats();
+      const camera = util.initCamera(20);
+      const renderer = util.initRender();
+      window.onresize = util.WinReSize(renderer, camera);
+      const controls = new OrbitControls(camera, renderer.domElement);
+      util.addAxisHelper(scene);
+
+      // 灯光
+      util.addAmbientLight(scene);
+      util.addDirectionalLight(scene);
+
+      // 渲染函数
+      const render = () => {
+        renderer.render(scene, camera);
+        stats.update();
+        requestAnimationFrame(render);
+      };
+
+      const createLabel = () => {
+        const name = "马达加斯加的企鹅们正在快乐的玩耍";
+        const canvas = document.createElement("canvas");
+        const color = "#dddddd";
+        const fontSize = 50;
+        const r = fontSize / 2;
+        const margin = fontSize / 2;
+        const textMarginleft = 10;
+        const height = fontSize * 2;
+        const width =
+          name.length * fontSize + 2 * margin + r * 2 + textMarginleft;
+        canvas.height = height;
+        canvas.width = width;
+        const ctx = canvas.getContext("2d");
+        // out
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(margin + r, height / 2, r, 0, 2 * Math.PI);
+        ctx.strokeStyle = color;
+        ctx.stroke();
+        ctx.closePath();
+        // inner
+        ctx.beginPath();
+        ctx.arc(margin + r, height / 2, 6, 0, 2 * Math.PI);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.strokeStyle = color;
+        ctx.stroke();
+        // font
+        ctx.font = `${fontSize}px Arial`;
+        ctx.textAlign = "start";
+        ctx.textBaseline = "middle";
+        ctx.fillText(name, margin + r * 2 + textMarginleft, height / 2);
+        return {
+          height,
+          width,
+          canvas,
+        };
+      };
+
+      const main = () => {
+        const c = createLabel();
+        const texture = new THREE.CanvasTexture(c.canvas);
+        const spriteMaterial = new THREE.SpriteMaterial({
+          map: texture,
+        });
+        const sprite = new THREE.Sprite(spriteMaterial);
+        sprite.scale.set(c.width / 100, c.height / 100, 0);
+        scene.add(sprite);
+      };
+      main();
+      render();
+    </script>
+  </body>
+</html>

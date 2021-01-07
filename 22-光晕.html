@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="x-shader/x-vertex" id="vertexshader">
+      varying vec2 vUv;
+      void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+      }
+    </script>
+    <script type="x-shader/x-fragment" id="fragmentshader">
+      uniform sampler2D baseTexture;
+      uniform sampler2D bloomTexture;
+      varying vec2 vUv;
+      void main() {
+          gl_FragColor = ( texture2D( baseTexture, vUv ) + vec4( 1.0 ) * texture2D( bloomTexture, vUv ) );
+      }
+    </script>
+    <script type="module">
+      import * as util from "./js/util.js";
+      import * as THREE from "./node_modules/three/build/three.module.js";
+      import { OrbitControls } from "./node_modules/three/examples/jsm/controls/OrbitControls.js";
+      import { GLTFLoader } from "./node_modules/three/examples/jsm/loaders/GLTFLoader.js";
+      import { EffectComposer } from "./node_modules/three/examples/jsm/postprocessing/EffectComposer.js";
+      import { RenderPass } from "./node_modules/three/examples/jsm/postprocessing/RenderPass.js";
+      import { UnrealBloomPass } from "./node_modules/three/examples/jsm/postprocessing/UnrealBloomPass.js";
+      import { ShaderPass } from "./node_modules/three/examples/jsm/postprocessing/ShaderPass.js";
+      const scene = util.initScene();
+      const stats = util.initStats();
+      const camera = util.initCamera();
+      const renderer = util.initRender();
+      window.onresize = util.WinReSize(renderer, camera);
+      const controls = new OrbitControls(camera, renderer.domElement);
+      util.addAxisHelper(scene);
+
+      // 灯光
+      util.addAmbientLight(scene);
+      util.addDirectionalLight(scene);
+
+      // 发光材质参数
+      const params = {
+        exposure: 1,
+        bloomStrength: 1.5,
+        bloomThreshold: 0,
+        bloomRadius: 0,
+      };
+      const clock = new THREE.Clock();
+      let mixer = null;
+      const main = () => {
+        // 渲染通道
+        const renderScene = new RenderPass(scene, camera);
+        // 发光材质
+        const bloomPass = new UnrealBloomPass(
+          new THREE.Vector2(window.innerWidth, window.innerHeight),
+          1.5,
+          0.4,
+          0.85
+        );
+        bloomPass.threshold = params.bloomThreshold;
+        bloomPass.strength = params.bloomStrength;
+        bloomPass.radius = params.bloomRadius;
+
+        // 光晕渲染器
+        const bloomComposer = new EffectComposer(renderer);
+        bloomComposer.renderToScreen = false;
+        bloomComposer.addPass(renderScene);
+        bloomComposer.addPass(bloomPass);
+
+        const finalPass = new ShaderPass(
+          new THREE.ShaderMaterial({
+            uniforms: {
+              baseTexture: { value: null },
+              bloomTexture: { value: bloomComposer.renderTarget2.texture },
+            },
+            vertexShader: document.getElementById("vertexshader").textContent,
+            fragmentShader: document.getElementById("fragmentshader")
+              .textContent,
+            defines: {},
+          }),
+          "baseTexture"
+        );
+        // 最终渲染器
+        const finalComposer = new EffectComposer(renderer);
+        finalComposer.addPass(renderScene);
+        finalComposer.addPass(finalPass);
+
+        // 加载模型
+        new GLTFLoader().load(
+          "https://threejs.org/examples/models/gltf/PrimaryIonDrive.glb",
+          function (gltf) {
+            const model = gltf.scene;
+            model.lighting = true;
+            scene.add(model);
+            model.name = 233;
+            mixer = new THREE.AnimationMixer(model);
+            const clip = gltf.animations[0];
+            mixer.clipAction(clip.optimize()).play();
+          }
+        );
+
+        const darkMaterial = new THREE.MeshBasicMaterial({ color: "black" });
+        const materials = {};
+        // 渲染函数
+        const render = () => {
+          scene.traverse((obj) => {
+            if (!obj.lighting) {
+              materials[obj.uuid] = obj.material;
+              obj.material = darkMaterial;
+            }
+          });
+          bloomComposer.render();
+
+          scene.traverse((obj) => {
+            if (materials[obj.uuid]) {
+              obj.material = materials[obj.uuid];
+              delete materials[obj.uuid];
+            }
+          });
+
+          finalComposer.render();
+          //  renderer.render(scene, camera);
+          const delta = clock.getDelta();
+          mixer ? mixer.update(delta) : "";
+          stats.update();
+          requestAnimationFrame(render);
+        };
+        render();
+      };
+      main();
+    </script>
+  </body>
+</html>

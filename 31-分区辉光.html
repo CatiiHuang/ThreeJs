@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import * as THREE from "./node_modules/three/build/three.module.js";
+      import { OrbitControls } from "./node_modules/three/examples/jsm/controls/OrbitControls.js";
+      import { EffectComposer } from "./node_modules/three/examples/jsm/postprocessing/EffectComposer.js";
+      import { UnrealBloomPass } from "./node_modules/three/examples/jsm/postprocessing/UnrealBloomPass.js";
+      import { RenderPass } from "./node_modules/three/examples/jsm/postprocessing/RenderPass.js";
+
+      let scene, camera, renderer, composer;
+
+      const params = {
+        exposure: 0,
+        bloomStrength: 1.5,
+        bloomThreshold: 0,
+        bloomRadius: 0,
+      };
+      const init = () => {
+        // 场景
+        scene = new THREE.Scene();
+        // 相机
+        camera = new THREE.PerspectiveCamera(
+          70,
+          window.innerWidth / window.innerHeight,
+          1,
+          100000
+        );
+        camera.position.set(50, 50, 50);
+        camera.position.y = 50;
+        // 渲染器
+        renderer = new THREE.WebGLRenderer({
+          antialias: true,
+        });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+        // 环境光
+        const light = new THREE.AmbientLight(0xffffff, 0.6);
+        light.layers.enable(0);
+        light.layers.enable(1);
+        scene.add(light);
+        // 控制器
+        const controls = new OrbitControls(camera, renderer.domElement);
+        scene.add(new THREE.AxesHelper(100));
+        window.onresize = () => {
+          renderer.setSize(window.innerWidth, window.innerHeight);
+          camera.aspect = window.innerWidth / window.innerHeight;
+          camera.updateProjectionMatrix();
+        };
+      };
+
+      const initComposer = () => {
+        composer = new EffectComposer(renderer);
+
+        const renderScene = new RenderPass(scene, camera);
+        // 光晕
+        const bloomPass = new UnrealBloomPass(
+          new THREE.Vector2(window.innerWidth, window.innerHeight),
+          1.5,
+          0.4,
+          0.85
+        );
+        bloomPass.threshold = params.bloomThreshold;
+        bloomPass.strength = params.bloomStrength;
+        bloomPass.radius = params.bloomRadius;
+        composer.addPass(renderScene);
+        composer.addPass(bloomPass);
+        bloomPass.renderToScreen = true;
+      };
+
+      const main = () => {
+        const geometry = new THREE.BoxGeometry(20, 20, 10);
+        // 正常方块
+        const normalMtl = new THREE.MeshLambertMaterial({ color: 0x00ffff });
+        const normalBox = new THREE.Mesh(geometry, normalMtl);
+        normalBox.position.z = -5;
+        normalBox.layers.set(0);
+        scene.add(normalBox);
+
+        // 发光方块
+        const bloomMtl = new THREE.MeshLambertMaterial({ color: 0xff5500 });
+        const bloomBox = new THREE.Mesh(geometry, bloomMtl);
+        bloomBox.position.z = 5;
+        bloomBox.layers.set(1);
+        scene.add(bloomBox);
+      };
+
+      const render = () => {
+        renderer.autoClear = false;
+        renderer.clear();
+
+        camera.layers.set(1);
+        composer.render();
+
+        renderer.clearDepth(); // 清除深度缓存
+
+        camera.layers.set(0);
+        renderer.render(scene, camera);
+        requestAnimationFrame(render);
+      };
+      init();
+      initComposer();
+      main();
+      render();
+    </script>
+  </body>
+</html>

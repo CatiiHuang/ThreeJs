@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script src="/node_modules/three/build/three.js"></script>
+    <script src="/node_modules//three/examples/js/controls/OrbitControls.js"></script>
+    <script src="/js/stats.min.js"></script>
+    <script src="/js/init.js"></script>
+    <script>
+      const scene = initScene();
+      const camera = initCamera();
+      const renderer = initRender();
+      const stats = initStats();
+
+      const controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+      const dirLight = new THREE.DirectionalLight(0xffffff, 0.125);
+      dirLight.position.set(0, 0, 1).normalize();
+      scene.add(dirLight);
+
+      var light = new THREE.AmbientLight(0x404040); // soft white light
+      scene.add(light);
+
+      const pointLight = new THREE.PointLight(0xffffff, 1.5);
+      pointLight.position.set(0, 100, 90);
+      scene.add(pointLight);
+
+      const render = () => {
+        renderer.render(scene, camera);
+        stats.update();
+        controls.update();
+        requestAnimationFrame(render);
+      };
+      render();
+
+      const loader = new THREE.FontLoader();
+      loader.load("/font/font.json", function (font) {
+        const textGeo = new THREE.TextGeometry("Hello three.js!", {
+          font: font,
+          size: 20,
+          height: 5,
+          curveSegments: 12,
+          // bevelEnabled: true,
+          bevelThickness: 10,
+          bevelSize: 8,
+          bevelSegments: 5,
+        });
+        const material = new THREE.MeshPhongMaterial({
+          color: 0xf01711,
+          flatShading: true,
+        });
+
+        const textMesh = new THREE.Mesh(textGeo, material);
+        // 计算几何体顶点
+        textGeo.computeBoundingBox();
+        const centerOffset =
+          -0.5 * (textGeo.boundingBox.max.x - textGeo.boundingBox.min.x);
+        textMesh.position.x = centerOffset;
+        textMesh.position.y = 0;
+        textMesh.position.z = 0;
+        scene.add(textMesh);
+      });
+    </script>
+  </body>
+</html>

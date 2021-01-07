@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="x-shader/x-vertex" id="vertexshader">
+      varying vec2 vUv;
+      void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+      }
+    </script>
+    <script type="x-shader/x-fragment" id="fragmentshader">
+      uniform sampler2D baseTexture;
+      uniform sampler2D bloomTexture;
+      varying vec2 vUv;
+      void main() {
+          gl_FragColor = ( texture2D( baseTexture, vUv ) + vec4( 1.0 ) * texture2D( bloomTexture, vUv ) );
+      }
+    </script>
+    <script type="module">
+      import * as util from "./js/util.js";
+      import * as THREE from "./node_modules/three/build/three.module.js";
+      import { EffectComposer } from "./node_modules/three/examples/jsm/postprocessing/EffectComposer.js";
+      import { RenderPass } from "./node_modules/three/examples/jsm/postprocessing/RenderPass.js";
+      import { ShaderPass } from "./node_modules/three/examples/jsm/postprocessing/ShaderPass.js";
+      import { UnrealBloomPass } from "./node_modules/three/examples/jsm/postprocessing/UnrealBloomPass.js";
+      import { OrbitControls } from "./node_modules/three/examples/jsm/controls/OrbitControls.js";
+      import { GUI } from "./node_modules/three/examples/jsm/libs/dat.gui.module.js";
+      const scene = util.initScene();
+      const stats = util.initStats();
+      const camera = util.initCamera();
+      const renderer = util.initRender();
+      renderer.toneMapping = THREE.ReinhardToneMapping;
+      window.onresize = util.WinReSize(renderer, camera);
+      const controls = new OrbitControls(camera, renderer.domElement);
+      util.addAxisHelper(scene);
+
+      // 灯光
+      util.addAmbientLight(scene);
+      util.addDirectionalLight(scene);
+
+      const main = () => {
+        const params = {
+          exposure: 1,
+          bloomStrength: 5,
+          bloomThreshold: 0,
+          bloomRadius: 0,
+          scene: "Scene with Glow",
+        };
+
+        const renderScene = new RenderPass(scene, camera);
+        // 光晕
+        const bloomPass = new UnrealBloomPass(
+          new THREE.Vector2(window.innerWidth, window.innerHeight),
+          1.5,
+          0.4,
+          0.85
+        );
+        bloomPass.threshold = params.bloomThreshold;
+        bloomPass.strength = params.bloomStrength;
+        bloomPass.radius = params.bloomRadius;
+
+        const bloomComposer = new EffectComposer(renderer);
+        bloomComposer.renderToScreen = false;
+        bloomComposer.addPass(renderScene);
+        bloomComposer.addPass(bloomPass);
+
+        const finalPass = new ShaderPass(
+          new THREE.ShaderMaterial({
+            uniforms: {
+              baseTexture: { value: null },
+              bloomTexture: { value: bloomComposer.renderTarget2.texture },
+            },
+            vertexShader: document.getElementById("vertexshader").textContent,
+            fragmentShader: document.getElementById("fragmentshader")
+              .textContent,
+            defines: {},
+          }),
+          "baseTexture"
+        );
+        //  finalPass.needsSwap = true;
+
+        const finalComposer = new EffectComposer(renderer);
+        finalComposer.addPass(renderScene);
+        finalComposer.addPass(finalPass);
+
+        // scene.traverse((obj) => {
+        //   if (obj.material) {
+        //     obj.material.dispose();
+        //   }
+        // });
+
+        const geometry = new THREE.IcosahedronBufferGeometry(10, 30);
+        const material = new THREE.MeshBasicMaterial({ color: 0xff1382 });
+        const sphere1 = new THREE.Mesh(geometry, material);
+        const sphere2 = new THREE.Mesh(geometry, material);
+        const sphere3 = new THREE.Mesh(geometry, material);
+        sphere1.position.x = 50;
+        sphere3.position.x = -50;
+        sphere1.lighting = true;
+        scene.add(sphere1);
+        scene.add(sphere2);
+        scene.add(sphere3);
+
+        // 渲染函数
+        const render = () => {
+          animate();
+
+          stats.update();
+          requestAnimationFrame(render);
+        };
+        const darkMaterial = new THREE.MeshBasicMaterial({ color: "black" });
+        const materials = {};
+
+        const animate = () => {
+          scene.traverse((obj) => {
+            if (!obj.lighting) {
+              materials[obj.uuid] = obj.material;
+              obj.material = darkMaterial;
+            }
+          });
+          //  中间执行  光晕效果
+          bloomComposer.render();
+          //  还原非光晕部分
+          scene.traverse((obj) => {
+            if (materials[obj.uuid]) {
+              obj.material = materials[obj.uuid];
+              delete materials[obj.uuid];
+            }
+          });
+          finalComposer.render();
+        };
+
+        const initGuiControl = () => {
+          const folder = new GUI({ width: 300 });
+          folder.add(params, "exposure", 0.1, 2).onChange(function (value) {
+            renderer.toneMappingExposure = Math.pow(value, 4.0);
+          });
+
+          folder
+            .add(params, "bloomThreshold", 0.0, 1.0)
+            .onChange(function (value) {
+              bloomPass.threshold = Number(value);
+            });
+
+          folder
+            .add(params, "bloomStrength", 0.0, 10.0)
+            .onChange(function (value) {
+              bloomPass.strength = Number(value);
+            });
+
+          folder
+            .add(params, "bloomRadius", 0.0, 1.0)
+            .step(0.01)
+            .onChange(function (value) {
+              bloomPass.radius = Number(value);
+            });
+        };
+        initGuiControl();
+        render();
+      };
+
+      main();
+    </script>
+  </body>
+</html>

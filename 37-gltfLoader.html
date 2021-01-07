@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import * as util from "./js/util.js";
+      import * as THREE from "./node_modules/three/build/three.module.js";
+      import { OrbitControls } from "./node_modules/three/examples/jsm/controls/OrbitControls.js";
+      import { GLTFLoader } from "./node_modules/three/examples/jsm/loaders/GLTFLoader.js";
+
+      const clock = new THREE.Clock();
+
+      let mixer = null;
+      const scene = util.initScene();
+      const stats = util.initStats();
+      const camera = util.initCamera(25);
+      const renderer = util.initRender();
+      window.onresize = util.WinReSize(renderer, camera);
+      const controls = new OrbitControls(camera, renderer.domElement);
+      util.addAxisHelper(scene);
+
+      // 灯光
+      util.addAmbientLight(scene);
+      util.addDirectionalLight(scene);
+
+      // 渲染函数
+      const render = () => {
+        renderer.render(scene, camera);
+        stats.update();
+        requestAnimationFrame(render);
+        //  animate();
+      };
+
+      const main = () => {
+        const material = new THREE.MeshBasicMaterial({
+          color: 0xff0000,
+          skinning: true,
+        });
+        var loader = new GLTFLoader();
+        loader.load("./model/scene.gltf", function (gltf) {
+          // mixer = new THREE.AnimationMixer(gltf.scene);
+          // mixer.clipAction(gltf.animations[0]).play();
+
+          // gltf.scene.scale.set(10, 10, 10);
+          console.log(gltf);
+          scene.add(gltf.scene); // 将模型引入three
+        });
+      };
+
+      // const animate = function () {
+      //   const delta = clock.getDelta();
+      //   if (mixer != null) {
+      //     mixer.update(delta);
+      //   }
+      // };
+      main();
+      render();
+    </script>
+  </body>
+</html>

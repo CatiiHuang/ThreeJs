@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script id="fragment_shader4" type="x-shader/x-fragment">
+      uniform float time;
+      varying vec2 vUv;
+      void main( void ) {
+          vec2 position = - 1.0 + 2.0 * vUv;
+          float red = abs( sin( position.x * position.y + time / 5.0 ) );
+          float green = abs( sin( position.x * position.y + time / 4.0 ) );
+          float blue = abs( sin( position.x * position.y + time / 3.0 ) );
+          gl_FragColor = vec4( red, green, blue, 1.0 );
+      }
+    </script>
+    <script id="vertexShader" type="x-shader/x-vertex">
+      varying vec2 vUv;
+      void main()
+      {
+          vUv = uv;
+          vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+          gl_Position = projectionMatrix * mvPosition;
+      }
+    </script>
+
+    <script src="./node_modules/three/build/three.min.js"></script>
+    <script src="./node_modules/three/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="./node_modules/three/examples/js/controls/OrbitControls.js"></script>
+    <script src="./js/stats.min.js"></script>
+    <script src="./js/init.js"></script>
+    <script>
+      var clock = new THREE.Clock();
+      var mixer = null;
+      const scene = initScene();
+      const camera = initCamera();
+      const renderer = initRender();
+      const controls = new THREE.OrbitControls(camera, renderer.domElement);
+      const AxisHelper = new THREE.AxisHelper(1000);
+      scene.add(AxisHelper);
+      const stats = initStats();
+      scene.background = new THREE.Color(0xf0f0f0);
+      const light = new THREE.DirectionalLight(0xffffff, 1);
+      light.position.set(10, 10, 10).normalize();
+      scene.add(light);
+      var Alight = new THREE.AmbientLight(0x010101); // soft white light
+      scene.add(Alight);
+
+      const uniforms1 = {
+        time: { value: 1.0 },
+      };
+
+      // 为引入模型设置材质
+      const setMaterial = (obj, material) =>
+        new Promise((resolve, reject) => {
+          obj.traverse((object) => {
+            object.material = material;
+            resolve(object);
+          });
+        });
+
+      const material = new THREE.ShaderMaterial({
+        transparent: true,
+        uniforms: uniforms1,
+        skinning: true,
+        vertexShader:
+          "#if defined(IS_BOTTOM)\nvarying vec2 v_uv;\n#endif\n\n#ifdef IS_MODEL\nvarying vec3 v_color;\n#endif\n#ifdef IS_BOTTOM\nattribute vec2 a_uv2;\nvarying vec2 v_uv2;\n#endif\n#ifdef IS_PANEL\nuniform mat4 u_reflectionTextureMatrix;\nvarying vec4 v_reflectionUv;\n#endif\n\nuniform vec2 u_offset2d;\nuniform vec2 u_scale2d;\nuniform mat4 u_mvp;\n\nvarying vec3 v_viewNormal;\nvarying vec3 v_viewPosition;\n\nvarying vec3 v_worldPosition;\n\n#ifndef IS_REFLECTION\nvarying vec4 v_videoPosition;\n#endif\n\nvoid main () {\n    v_viewNormal = normalMatrix * normal;\n\n    v_worldPosition = (modelMatrix * vec4(position, 1.0)).xyz;\n    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);\n    v_viewPosition = -mvPosition.xyz;\n    gl_Position = projectionMatrix * mvPosition;\n\n    #if defined(IS_BOTTOM)\n    v_uv = uv;\n    #endif\n\n    #ifdef IS_MODEL\n    v_color = color;\n    #endif\n    #ifdef IS_BOTTOM\n    v_uv2 = a_uv2;\n    #endif\n    #ifdef IS_PANEL\n    v_reflectionUv = u_reflectionTextureMatrix * vec4(position, 1.0);\n    #endif\n\n    #ifndef IS_REFLECTION\n    v_videoPosition = u_mvp * vec4(position, 1.0);\n    v_videoPosition.xy *= u_scale2d;\n    v_videoPosition.xy += u_offset2d * v_videoPosition.w;\n\n    gl_Position.xy *= u_scale2d;\n    gl_Position.xy += u_offset2d * gl_Position.w;\n\n    #endif\n\n}\n",
+        fragmentShader:
+          "#define PHONG\n\n#if defined(IS_BOTTOM)\nuniform sampler2D u_normalTexture;\nvarying vec2 v_uv;\n#endif\n\n#ifdef IS_MODEL\nvarying vec3 v_color;\n#endif\n#ifdef IS_BOTTOM\nvarying vec2 v_uv2;\n#endif\n#ifdef IS_PANEL\nuniform sampler2D u_reflectionTexture;\nvarying vec4 v_reflectionUv;\n#endif\n\nuniform vec3 u_diffuse;\nuniform vec3 u_specular;\nuniform float u_shininess;\nuniform float u_opacity;\n\n#ifndef IS_REFLECTION\nuniform sampler2D u_videoTexture;\n#endif\n\nuniform float u_focusDistance;\nuniform float u_focusRange;\nuniform vec2 u_videoResolution;\nuniform vec2 u_resolution;\nuniform vec2 u_videoUvOffset;\nuniform vec2 u_timePixelUvClamp;\n\n#ifdef IS_REFLECTION\nuniform vec3 u_reflectionCameraPosition;\n#else\nuniform vec3 u_cameraPosition;\n#endif\nuniform vec3 u_lightPosition;\n\nuniform vec2 u_videoUvScale;\nuniform vec4 u_screenUvInfo;\n\nvarying vec3 v_worldPosition;\nvarying vec3 v_viewNormal;\nvarying vec3 v_viewPosition;\nvarying vec4 v_videoPosition;\n\n#include <common>\n#include <bsdfs>\n#include <lights_pars_begin>\n#include <lights_phong_pars_fragment>\n#include <dithering_pars_fragment>\n\n\n#include <getScatter>\n\nfloat blendScreen(float base, float blend) {\n    return 1.0-((1.0-base)*(1.0-blend));\n}\n\nvec3 blendScreen(vec3 base, vec3 blend) {\n    return vec3(blendScreen(base.r,blend.r),blendScreen(base.g,blend.g),blendScreen(base.b,blend.b));\n}\n\nvec3 blendScreen(vec3 base, vec3 blend, float opacity) {\n    return (blendScreen(base, blend) * opacity + base * (1.0 - opacity));\n}\n\n\n// #if defined(IS_MODEL) || defined(IS_BOTTOM)\n#if defined(IS_BOTTOM)\nvec3 perturbNormal2Arb( vec3 eye_pos, vec3 surf_norm, vec2 uv, float normalScale, float bias ) {\n    // Workaround for Adreno 3XX dFd*( vec3 ) bug. See #9988\n    vec3 q0 = vec3( dFdx( eye_pos.x ), dFdx( eye_pos.y ), dFdx( eye_pos.z ) );\n    vec3 q1 = vec3( dFdy( eye_pos.x ), dFdy( eye_pos.y ), dFdy( eye_pos.z ) );\n    vec2 st0 = dFdx( uv.st );\n    vec2 st1 = dFdy( uv.st );\n\n    float scale = sign( st1.t * st0.s - st0.t * st1.s ); // we do not care about the magnitude\n    scale *= float( gl_FrontFacing ) * 2.0 - 1.0;\n\n    vec3 S = normalize( ( q0 * st1.t - q1 * st0.t ) * scale );\n    vec3 T = normalize( ( - q0 * st1.s + q1 * st0.s ) * scale );\n    vec3 N = normalize( surf_norm );\n\n    vec3 mapN = texture2D( u_normalTexture, uv, bias ).xyz * 2.0 - 1.0;\n    mapN.xy = vec2(normalScale) * mapN.xy;\n    mat3 tsn = mat3( S, T, N );\n    return normalize( tsn * mapN );\n}\n#endif\n\nvoid main () {\n\n    vec3 viewNormal = normalize(v_viewNormal);\n    vec3 vViewPosition = v_viewPosition;\n    vec3 normal = viewNormal;\n    #ifdef IS_REFLECTION\n    vViewPosition.x *= -1.0;\n    normal.x *= -1.0;\n    #endif\n    \n    float ao = 1.0 - smoothstep(2.0, -0.3, length(v_worldPosition * vec3(1.0, 5.0, 1.0)));\n\n\tReflectedLight reflectedLight = ReflectedLight( vec3( 0.0 ), vec3( 0.0 ), vec3( 0.0 ), vec3( 0.0 ) );\n\tvec3 totalEmissiveRadiance = vec3(0.0);\n\n    float depthWeight = smoothstep(-3.0, -1.0, v_worldPosition.z);\n\n    BlinnPhongMaterial material;\n    material.diffuseColor = u_diffuse;\n    material.specularColor = u_specular * depthWeight;\n    material.specularShininess = u_shininess;\n    // material.specularStrength = 1.0;\n\n    #ifdef IS_MODEL\n    material.diffuseColor = v_color;\n    material.specularColor = v_color * 2.0;\n    #endif\n\n    #ifdef IS_BOTTOM\n        #ifndef IS_REFLECTION\n        material.specularShininess = 500.0;\n        material.specularStrength = 0.2;\n        #endif\n    normal = perturbNormal2Arb( -vViewPosition, normal, v_uv2 * 3.0, 0.2, normal.y );\n    normal = perturbNormal2Arb( -vViewPosition + normal * 0.05, normal, v_uv * 3.0, 0.35, 0.0 );\n    \n    #endif\n\n    material.specularShininess *= depthWeight;\n\n\t#include <lights_fragment_begin>\n\t#include <lights_fragment_end>\n\n    #ifdef IS_MODEL\n        #ifdef IS_REFLECTION\n        reflectedLight.directDiffuse *= 9.0;\n        #else\n        reflectedLight.directDiffuse *= 1.25;\n        #endif\n    #endif\n\tvec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + reflectedLight.directSpecular + reflectedLight.indirectSpecular + totalEmissiveRadiance;\n\n\n    #ifdef IS_REFLECTION\n    vec3 cameraPosition = u_reflectionCameraPosition;\n    #else\n    vec3 cameraPosition = u_cameraPosition;\n    #endif\n\n    vec3 toCameraWorld = v_worldPosition - cameraPosition;\n    vec3 nToCameraWorldDir = normalize(toCameraWorld);\n    float toCameraDist = length(toCameraWorld);\n\n    vec3 color = outgoingLight * ao;\n\n    #ifndef IS_REFLECTION\n        #ifdef IS_PANEL\n        color *= 0.4;\n        color += texture2DProj(u_reflectionTexture, v_reflectionUv).rgb * 0.4;\n        #endif\n    #endif\n\n    float scatter = getScatter(cameraPosition, nToCameraWorldDir, u_lightPosition, toCameraDist);\n    #ifdef IS_REFLECTION\n        scatter *= 0.65;\n    #endif\n\n    color += scatter * pointLights[0].color;\n    \n    #ifndef IS_REFLECTION\n        vec2 uv = ((v_videoPosition.xy / v_videoPosition.w) * 0.5) / u_videoUvScale + 0.5;\n        uv = mix(uv, vec2(max(uv.x, u_timePixelUvClamp.x), min(uv.y, u_timePixelUvClamp.y)), step(uv.x, u_timePixelUvClamp.x) * step(u_timePixelUvClamp.y, uv.y));\n        color += texture2D(u_videoTexture, uv).rgb * 0.7;\n    #endif\n\n    #ifdef IS_REFLECTION\n    // color = vec3(1.0, 0.0, 0.0);\n    #endif\n    \n    gl_FragColor = vec4(dithering(color * u_opacity), 1.0);\n}\n",
+      });
+      const material2 = new THREE.MeshBasicMaterial({
+        color: 0xff0000,
+        skinning: true,
+      });
+      const loader = new THREE.GLTFLoader();
+      loader.load("/glb/female.glb", async (gltf) => {
+        const obj = gltf.scene;
+        obj.name = "3dmodel";
+        obj.scale.x = 30;
+        obj.scale.y = 30;
+        obj.scale.z = 30;
+        obj.traverse((object) => {
+          object.material = material;
+          mixer = new THREE.AnimationMixer(obj);
+          mixer.clipAction(gltf.animations[0]).play();
+          scene.add(obj);
+        });
+      });
+
+      var geometry = new THREE.BoxGeometry(20, 20, 20);
+      var cube = new THREE.Mesh(geometry, material);
+      // scene.add(cube);
+
+      // 渲染函数
+      const render = () => {
+        var delta = clock.getDelta();
+        uniforms1["time"].value += 0.006 * 5;
+        renderer.render(scene, camera);
+        stats.update();
+        if (mixer != null) {
+          mixer.update(delta);
+        }
+        requestAnimationFrame(render);
+      };
+      render();
+    </script>
+  </body>
+</html>

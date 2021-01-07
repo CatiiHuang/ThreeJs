@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import * as util from "./js/util.js";
+      import * as THREE from "./node_modules/three/build/three.module.js";
+      import { OrbitControls } from "./node_modules/three/examples/jsm/controls/OrbitControls.js";
+      import { LightningStrike } from "./node_modules/three/examples/jsm/geometries/LightningStrike.js";
+      import { LightningStorm } from "./node_modules/three/examples/jsm/objects/LightningStorm.js";
+      import { EffectComposer } from "./node_modules/three/examples/jsm/postprocessing/EffectComposer.js";
+      import { RenderPass } from "./node_modules/three/examples/jsm/postprocessing/RenderPass.js";
+      import { OutlinePass } from "./node_modules/three/examples/jsm/postprocessing/OutlinePass.js";
+      import { ShaderPass } from "./node_modules/three/examples/jsm/postprocessing/ShaderPass.js";
+      import { FXAAShader } from "./node_modules/three/examples/jsm/shaders/FXAAShader.js";
+      const scene = util.initScene();
+      const stats = util.initStats();
+      const camera = util.initCamera(300);
+      const renderer = util.initRender();
+      renderer.outputEncoding = THREE.sRGBEncoding;
+      window.onresize = util.WinReSize(renderer, camera);
+      const controls = new OrbitControls(camera, renderer.domElement);
+      // 灯光
+      util.addAmbientLight(scene);
+
+      const main = () => {
+        const bigRadius = 100;
+        const minRadius = 50;
+        const lingtingNum = 50;
+        const clock = new THREE.Clock();
+        const composer = new EffectComposer(renderer);
+        const renderPass = new RenderPass(scene, camera);
+        const effectFXAA = new ShaderPass(FXAAShader);
+        composer.addPass(effectFXAA);
+        composer.addPass(renderPass);
+        composer.setSize(window.innerWidth, window.innerHeight);
+        composer.addPass(new RenderPass(scene, camera));
+        const outlineMeshArray = [];
+        const rayParams = {
+          //   sourceOffset: new THREE.Vector3(),
+          //   destOffset: new THREE.Vector3(),
+          radius0: 1,
+          radius1: 1,
+          minRadius: 2.5,
+          maxIterations: 7,
+          isEternal: true,
+
+          timeScale: 1.5,
+
+          propagationTimeFactor: 0.05,
+          vanishingTimeFactor: 0.95,
+          subrayPeriod: 3.5,
+          subrayDutyCycle: 0.6,
+          maxSubrayRecursion: 3,
+          ramification: 7,
+          recursionProbability: 0.6,
+
+          roughness: 0.85,
+          straightness: 0.6,
+        };
+
+        createBallScene();
+        const outLinePass = createOutline();
+        composer.addPass(outLinePass);
+        const points = scene.getObjectByName("bigBall").geometry.vertices;
+        // const points = scene.getObjectByName("bigBall").geometry.attributes
+        //   .position.array;
+
+        createLightingScene();
+
+        // 创建球形场景
+        function createBallScene() {
+          const ballScene = new THREE.Group();
+          ballScene.name = "ballScene";
+          // util.addAxisHelper(ballScene);
+          scene.add(ballScene);
+
+          const r = "https://threejs.org/examples/textures/cube/Bridge2/";
+          const urls = [
+            r + "posx.jpg",
+            r + "negx.jpg",
+            r + "posy.jpg",
+            r + "negy.jpg",
+            r + "posz.jpg",
+            r + "negz.jpg",
+          ];
+
+          const textureCube = new THREE.CubeTextureLoader().load(urls);
+          textureCube.mapping = THREE.CubeReflectionMapping;
+          textureCube.encoding = THREE.sRGBEncoding;
+
+          const sphereMaterial = new THREE.MeshPhysicalMaterial({
+            transparent: true,
+            transmission: 0.96,
+            depthWrite: true,
+            color: "white",
+            metalness: 0,
+            roughness: 0,
+            envMap: textureCube,
+          });
+
+          const bigBall = new THREE.Mesh(
+            new THREE.SphereGeometry(bigRadius, 50, 50),
+            sphereMaterial
+          );
+          bigBall.name = "bigBall";
+          ballScene.add(bigBall);
+
+          const minBall = new THREE.Mesh(
+            new THREE.SphereBufferGeometry(minRadius, 50, 50),
+            new THREE.MeshNormalMaterial({
+              color: 0x00ffff,
+            })
+          );
+          ballScene.add(minBall);
+        }
+
+        // 创建光晕
+        function createOutline() {
+          const outlinePass = new OutlinePass(
+            new THREE.Vector2(window.innerWidth, window.innerHeight),
+            scene,
+            camera
+          );
+          outlinePass.edgeStrength = 2.5;
+          outlinePass.edgeGlow = 0.7;
+          outlinePass.edgeThickness = 2.8;
+          outlinePass.visibleEdgeColor = new THREE.Color(0x00ffff);
+          outlinePass.hiddenEdgeColor.set(0);
+
+          scene.outlineEnabled = true;
+          return outlinePass;
+        }
+
+        // 创建闪电
+        function createLightingScene() {
+          const lightingScene = new THREE.Group();
+          lightingScene.name = "lightingScene";
+          scene.add(lightingScene);
+          const lightningColor = new THREE.Color(0xb0ffff);
+          const outlineColor = new THREE.Color(0x00ffff);
+
+          const lightningMaterial = new THREE.MeshBasicMaterial({
+            color: lightningColor,
+          });
+
+          for (let i = 0; i < lingtingNum; i++) {
+            let lightningStrike = new LightningStrike(rayParams);
+            let lightningStrikeMesh = new THREE.Mesh(
+              lightningStrike,
+              lightningMaterial
+            );
+            outlineMeshArray.push(lightningStrikeMesh);
+            lightningStrike.endPoint =
+              points[Math.floor(Math.random() * points.length)];
+
+            lightingScene.add(lightningStrikeMesh);
+          }
+        }
+        const LightingRender = (time) => {
+          const lightings = scene.getObjectByName("lightingScene").children;
+
+          for (let i = 0; i < lightings.length; i++) {
+            const lightningStrike = lightings[i].geometry;
+
+            lightningStrike.rayParameters.sourceOffset.copy(
+              new THREE.Vector3(0, 0, 0)
+            );
+            // lightningStrike.rayParameters.sourceOffset.y -= bigRadius;
+            lightningStrike.rayParameters.destOffset.copy(
+              lightningStrike.endPoint
+            );
+            // lightningStrike.rayParameters.destOffset.y += bigRadius;
+            lightningStrike.update(time);
+          }
+          //  renderer.render(scene, camera);
+          // return;
+          if (scene.outlineEnabled) {
+            outLinePass.selectedObjects = lightings;
+            composer.render();
+          } else {
+            renderer.render(scene, camera);
+          }
+        };
+
+        let currentTime = 0;
+        const render = () => {
+          currentTime += 1 * clock.getDelta();
+          stats.update();
+          LightingRender(currentTime);
+          requestAnimationFrame(render);
+        };
+        render();
+      };
+      main();
+    </script>
+  </body>
+</html>

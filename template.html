@@ -13,41 +13,62 @@
   </head>
   <body>
     <script type="module">
-      import * as util from "./js/util.js";
       import * as THREE from "./node_modules/three/build/three.module.js";
       import { OrbitControls } from "./node_modules/three/examples/jsm/controls/OrbitControls.js";
-      import { EffectComposer } from "./node_modules/three/examples/jsm/postprocessing/EffectComposer.js";
-      import { UnrealBloomPass } from "./node_modules/three/examples/jsm/postprocessing/UnrealBloomPass.js";
-      import { ShaderPass } from "./node_modules/three/examples/jsm/postprocessing/ShaderPass.js";
-      import { RenderPass } from "./node_modules/three/examples/jsm/postprocessing/RenderPass.js";
 
-      const scene = util.initScene();
-      const stats = util.initStats();
-      const camera = util.initCamera();
-      const renderer = util.initRender();
-      window.onresize = util.WinReSize(renderer, camera);
-      const controls = new OrbitControls(camera, renderer.domElement);
-      util.addAxisHelper(scene);
+      const { scene, camera, renderer } = initScene();
 
-      // 灯光
-      util.addAmbientLight(scene);
-      util.addDirectionalLight(scene);
-
-      // 渲染函数
-      const render = () => {
-        renderer.render(scene, camera);
-        stats.update();
-        requestAnimationFrame(render);
-      };
-
-      const main = () => {
+      (function main() {
         const geometry = new THREE.BoxGeometry(10, 10, 10);
         const material = new THREE.MeshLambertMaterial({ color: 0xffff });
         const mesh = new THREE.Mesh(geometry, material);
         scene.add(mesh);
-      };
-      main();
-      render();
+
+        render();
+      })();
+
+      function render() {
+        renderer.render(scene, camera);
+        requestAnimationFrame(render);
+      }
+
+      function initScene() {
+        // 场景
+        const scene = new THREE.Scene();
+        // 相机
+        const camera = new THREE.PerspectiveCamera(
+          70,
+          window.innerWidth / window.innerHeight,
+          1,
+          100000
+        );
+        camera.position.set(50, 50, 50);
+        camera.position.y = 50;
+        // 渲染器
+        const renderer = new THREE.WebGLRenderer({
+          antialias: true,
+          //   alpha: true,
+        });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+        // 环境光
+        const light = new THREE.AmbientLight(0xffffff, 0.4);
+        scene.add(light);
+        // 控制器
+        const controls = new OrbitControls(camera, renderer.domElement);
+        scene.add(new THREE.AxesHelper(100));
+        window.onresize = () => {
+          renderer.setSize(window.innerWidth, window.innerHeight);
+          camera.aspect = window.innerWidth / window.innerHeight;
+          camera.updateProjectionMatrix();
+        };
+        return {
+          scene,
+          camera,
+          renderer,
+        };
+      }
     </script>
   </body>
 </html>

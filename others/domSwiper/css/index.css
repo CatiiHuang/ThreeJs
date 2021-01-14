@@ -1,0 +1,87 @@
+body {
+  background-color: rgba(0, 0, 0, 0.95);
+}
+* {
+  margin: 0;
+  padding: 0;
+}
+
+.swiper-wrap {
+  /* width: 480px; */
+  /* border: 1px solid blue; */
+  border-radius: 2px 2px 5px 5px;
+  /* margin: 150px auto; */
+  border: 4px solid #00ffff;
+  border-top: 25px solid #00ffff;
+  box-shadow: 0 4px 25px #00fbfe;
+}
+.swiper-wrap::after {
+  content: "";
+  height: 100%;
+  width: 100%;
+  background-color: red;
+}
+.swiper {
+  overflow: hidden;
+  height: 630px;
+}
+
+.swiper-item {
+  height: 70px;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 40px;
+  border-bottom: 1px solid #00888888;
+  /* box-shadow: 0 0 25px #00fbfe; */
+}
+
+.swiper-item span {
+  border-radius: 50%;
+  height: 12px;
+  width: 12px;
+  background-color: #00fbfe;
+  box-shadow: 0 0px 15px #00fbfe;
+}
+.swiper-item div {
+  margin-left: 25px;
+  margin-right: 20px;
+}
+.swiper-wrap .box-title {
+  font-size: 30px;
+  color: #00fbfe;
+  text-align: left;
+  padding: 15px 30px;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  text-shadow: 0 0px 25px #00fbfe;
+  border-bottom: 1px solid #00fbfe;
+}
+
+.swiper-wrap .box-title img {
+  width: 35px;
+  margin-right: 20px;
+}
+.swiper-item img,
+.icon {
+  width: 40px;
+}
+.act-swiper-item {
+  animation: actAnimation 0.3s 20 alternate;
+  /* box-shadow: 0 0 25px rgba(0, 255, 255, 7); */
+}
+@keyframes actAnimation {
+  from {
+    background-color: rgba(0, 255, 255, 0.6);
+    box-shadow: 0 0 25px rgba(0, 255, 255, 0.8);
+  }
+  to {
+    background-color: rgba(0, 255, 255, 0);
+    box-shadow: 0 0 25px rgba(0, 255, 255, 0);
+  }
+}
+.swiper-transition {
+  transition: all 3s;
+}

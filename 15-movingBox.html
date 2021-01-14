@@ -64,7 +64,7 @@
       );
       scene.add(line);
 
-      const squareGeo = new THREE.BoxGeometry(5, 1, 1);
+      const squareGeo = new THREE.BoxGeometry(25, 1, 1);
       const squareMtl = new THREE.MeshPhongMaterial({
         color: 0xf01711,
         flatShading: true,
@@ -92,6 +92,7 @@
       // 渲染函数
       const render = () => {
         if (flow) {
+          console.log(flow);
           flow.moveAlongCurve(0.001);
         }
         renderer.render(scene, camera);

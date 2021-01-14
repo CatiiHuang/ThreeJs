@@ -31,6 +31,7 @@
         geometry.vertices.push(p1);
         geometry.vertices.push(p2);
         geometry.colors.push(color1, color2);
+        console.log(geometry);
         const line = new THREE.Line(geometry, material, THREE.LineSegments);
         scene.add(line);
       };

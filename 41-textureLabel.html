@@ -23,11 +23,11 @@
 
       const scene = util.initScene();
       const stats = util.initStats();
-      const camera = util.initCamera(20);
+      const camera = util.initCamera(100);
       const renderer = util.initRender();
       window.onresize = util.WinReSize(renderer, camera);
       const controls = new OrbitControls(camera, renderer.domElement);
-      util.addAxisHelper(scene);
+      util.addAxisHelper(scene, 50);
 
       // 灯光
       util.addAmbientLight(scene);
@@ -40,10 +40,58 @@
         requestAnimationFrame(render);
       };
 
-      const createLabel = () => {
-        const name = "马达加斯加的企鹅们正在快乐的玩耍";
+      /*
+        { text,color,fontSize,origin }
+      */
+      const makeLabel = (opt = {}) => {
+        const text = opt.text || "马达加斯加的企鹅们正在快乐的玩耍";
         const canvas = document.createElement("canvas");
-        const color = "#dddddd";
+        const color = opt.color || "#ffffff";
+        const fontSize = opt.fontSize || 50;
+        const textLength = text.length * fontSize;
+        const height = fontSize;
+        let marginLeft = opt.margin?.[0] || 100;
+        let marginRight = opt.margin?.[1] || 100;
+        const outRadius = height / 2;
+        if (opt.origin !== "left")
+          marginLeft += Number(textLength + outRadius * 6);
+        if (opt.origin == "right") marginRight += textLength;
+
+        const width = textLength + marginLeft + marginRight + outRadius * 6 + 6;
+        canvas.height = height;
+        canvas.width = width;
+        const ctx = canvas.getContext("2d");
+        // out
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(marginLeft + outRadius, height / 2, outRadius, 0, 2 * Math.PI);
+        ctx.strokeStyle = color;
+        ctx.stroke();
+        ctx.closePath();
+        // inner
+        ctx.beginPath();
+        ctx.arc(marginLeft + outRadius, height / 2, 6, 0, 2 * Math.PI);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.strokeStyle = color;
+        ctx.stroke();
+        // text
+        ctx.fillStyle = color;
+        ctx.font = `${fontSize}px Arial`;
+        ctx.textAlign = "start";
+        ctx.textBaseline = "top";
+        ctx.fillText(text, marginLeft + outRadius * 3, 2);
+        return {
+          height,
+          width,
+          canvas,
+        };
+      };
+
+      const createLabel = (opt = {}) => {
+        const name = opt.name || "马达加斯加的企鹅们正在快乐的玩耍";
+        const canvas = document.createElement("canvas");
+        const color = opt.color || "#ffffff";
         const fontSize = 50;
         const r = fontSize / 2;
         const margin = fontSize / 2;
@@ -81,13 +129,20 @@
       };
 
       const main = () => {
-        const c = createLabel();
+        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        const material = new THREE.MeshLambertMaterial({ color: 0xffff });
+        const mesh = new THREE.Mesh(geometry, material);
+        scene.add(mesh);
+
+        const c = makeLabel();
         const texture = new THREE.CanvasTexture(c.canvas);
         const spriteMaterial = new THREE.SpriteMaterial({
           map: texture,
         });
         const sprite = new THREE.Sprite(spriteMaterial);
-        sprite.scale.set(c.width / 100, c.height / 100, 0);
+        sprite.scale.set(c.width / 40, c.height / 40, 0);
+        sprite.position.set(50, 0, 0);
+
         scene.add(sprite);
       };
       main();

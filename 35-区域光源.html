@@ -52,7 +52,7 @@
         scene.add(ambient);
 
         // 添加平面光
-        const rectLight = new THREE.RectAreaLight("#ffffff", 50, 15, 15);
+        const rectLight = new THREE.RectAreaLight("#ffffff", 50, 10, 10);
         rectLight.name = "rectLight";
         rectLight.position.set(50, 50, 50);
         rectLight.castShadow = true;
@@ -60,15 +60,15 @@
         scene.add(rectLight);
 
         // 添加显示平面光面板的材质
-        var rectLightMesh = new THREE.Mesh(
-          new THREE.PlaneBufferGeometry(),
-          new THREE.MeshBasicMaterial({
-            side: THREE.DoubleSide,
-          })
-        );
-        rectLightMesh.scale.x = 30;
-        rectLightMesh.scale.y = 30;
-        rectLight.add(rectLightMesh);
+        // var rectLightMesh = new THREE.Mesh(
+        //   new THREE.PlaneBufferGeometry(),
+        //   new THREE.MeshBasicMaterial({
+        //     side: THREE.DoubleSide,
+        //   })
+        // );
+        // rectLightMesh.scale.x = 30;
+        // rectLightMesh.scale.y = 30;
+        // rectLight.add(rectLightMesh);
 
         // 添加地板
         var geoFloor = new THREE.BoxBufferGeometry(1000, 0.1, 1000);

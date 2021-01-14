@@ -17,41 +17,59 @@
   </head>
   <body>
     <script>
-      const name = "马达加斯加的企鹅们在快乐的玩耍";
-      const canvas = document.createElement("canvas");
-      const fontSize = 50;
-      const r = fontSize / 2;
-      const margin = fontSize / 2;
+      // const name = "马达加斯加的企鹅们在快乐的玩耍";
+      // const canvas = document.createElement("canvas");
+      // const fontSize = 50;
+      // const r = fontSize / 2;
+      // const margin = fontSize / 2;
 
-      const textMarginleft = 10;
-      const height = fontSize * 2;
-      const width =
-        name.length * fontSize + 2 * margin + r * 2 + textMarginleft;
+      // const textMarginleft = 10;
+      // const height = fontSize * 2;
+      // const width =
+      //   name.length * fontSize + 2 * margin + r * 2 + textMarginleft;
 
-      canvas.height = height;
-      canvas.width = width;
-      const ctx = canvas.getContext("2d");
-      // out
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(margin + r, height / 2, r, 0, 2 * Math.PI);
-      ctx.strokeStyle = "#c7d6f0";
-      ctx.stroke();
-      ctx.closePath();
-      // inner
-      ctx.beginPath();
-      ctx.arc(margin + r, height / 2, 6, 0, 2 * Math.PI);
-      ctx.fillStyle = "#c7d6f0";
-      ctx.fill();
-      ctx.strokeStyle = "#c7d6f0";
-      ctx.stroke();
-      // font
-      ctx.font = `${fontSize}px Arial`;
-      ctx.textAlign = "start";
-      ctx.textBaseline = "middle";
-      ctx.fillText(name, margin + r * 2 + textMarginleft, height / 2);
+      // canvas.height = height;
+      // canvas.width = width;
+      // const ctx = canvas.getContext("2d");
+      // // out
+      // ctx.lineWidth = 3;
+      // ctx.beginPath();
+      // ctx.arc(margin + r, height / 2, r, 0, 2 * Math.PI);
+      // ctx.strokeStyle = "#c7d6f0";
+      // ctx.stroke();
+      // ctx.closePath();
+      // // inner
+      // ctx.beginPath();
+      // ctx.arc(margin + r, height / 2, 6, 0, 2 * Math.PI);
+      // ctx.fillStyle = "#c7d6f0";
+      // ctx.fill();
+      // ctx.strokeStyle = "#c7d6f0";
+      // ctx.stroke();
+      // // font
+      // ctx.font = `${fontSize}px Arial`;
+      // ctx.textAlign = "start";
+      // ctx.textBaseline = "middle";
+      // ctx.fillText(name, margin + r * 2 + textMarginleft, height / 2);
 
-      document.body.appendChild(canvas);
+      const makeLabel = (opt = {}) => {
+        const text = opt.text || "马达加斯加的企鹅们正在快乐的玩耍";
+        const canvas = document.createElement("canvas");
+        const color = opt.color || "#dddddd";
+        const fontSize = opt.fontSize || 50;
+        const marginLeft = opt.margin?.[0] || fontSize / 2;
+        const marginRight = opt.margin?.[1] || fontSize / 2;
+        const height = fontSize;
+        const width = text.length * fontSize + marginLeft + marginRight;
+        canvas.height = height;
+        canvas.width = width;
+        const ctx = canvas.getContext("2d");
+        ctx.font = `${fontSize}px Arial`;
+        ctx.textAlign = "start";
+        ctx.textBaseline = "top";
+        ctx.fillText(text, marginLeft, 2);
+        document.body.appendChild(canvas);
+      };
+      makeLabel();
     </script>
   </body>
 </html>

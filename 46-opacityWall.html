@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import * as THREE from "./node_modules/three/build/three.module.js";
+      import { OrbitControls } from "./node_modules/three/examples/jsm/controls/OrbitControls.js";
+      // 初始化
+      function initScene() {
+        // 场景
+        const scene = new THREE.Scene();
+        // 相机
+        const camera = new THREE.PerspectiveCamera(
+          70,
+          window.innerWidth / window.innerHeight,
+          1,
+          100000
+        );
+        camera.position.set(0, 50, 0);
+        camera.position.y = 50;
+        // 渲染器
+        const renderer = new THREE.WebGLRenderer({
+          antialias: true,
+          //   alpha: true,
+        });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+        // 环境光
+        const light = new THREE.AmbientLight(0xffffff, 0.4);
+
+        scene.add(light);
+        // 控制器
+        const controls = new OrbitControls(camera, renderer.domElement);
+        scene.add(new THREE.AxesHelper(30));
+        window.onresize = () => {
+          renderer.setSize(window.innerWidth, window.innerHeight);
+          camera.aspect = window.innerWidth / window.innerHeight;
+          camera.updateProjectionMatrix();
+        };
+        //时钟
+        const clock = new THREE.Clock();
+        // 动画序列
+        const animationList = [];
+        // 渲染
+        function render() {
+          animationList.forEach((animate) => animate());
+          renderer.render(scene, camera);
+          requestAnimationFrame(render);
+        }
+        render();
+        return {
+          clock,
+          scene,
+          camera,
+          renderer,
+          animationList,
+        };
+      }
+      // 顶点着色器
+      const vertexShader = `
+          uniform vec3 u_color;
+
+          uniform float time;
+          uniform float u_height;
+          varying float v_opacity;
+
+          void main() {
+              vec3 vPosition = position;
+              v_opacity = mix(1.0, 0.0, position.y / u_height * 1.0) * (1.0 + sin(time) * 0.5);
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(vPosition, 1);
+          }
+       `;
+      // 片元着色器
+      const fragmentShader = ` 
+          uniform vec3 u_color;
+          uniform float u_opacity;
+          varying float v_opacity;
+          void main() { 
+              gl_FragColor = vec4(u_color, v_opacity * u_opacity);
+          }
+        `;
+
+      const { scene, clock, camera, animationList } = initScene();
+      //
+      function main() {
+        const { radius, height, opacity, color, speed, renderOrder } = {
+          position: {
+            x: 0,
+            y: 0,
+            z: 0,
+          },
+          speed: 2,
+          color: "#00ffff",
+          opacity: 0.5,
+          radius: 20,
+          height: 10,
+          renderOrder: 5,
+        };
+
+        const geometry = new THREE.CylinderGeometry(
+          radius,
+          radius,
+          height,
+          32,
+          1,
+          true
+        );
+        const material = new THREE.ShaderMaterial({
+          uniforms: {
+            u_height: {
+              value: height,
+            },
+            u_opacity: {
+              value: opacity,
+            },
+            u_color: {
+              value: new THREE.Color(color),
+            },
+            time: {
+              value: 0,
+            },
+          },
+          transparent: true,
+          depthWrite: false,
+          depthTest: false,
+          side: THREE.DoubleSide,
+          vertexShader: vertexShader,
+          fragmentShader: fragmentShader,
+        });
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.renderOrder = renderOrder || 1;
+        scene.add(mesh);
+
+        // line
+
+        // 规划路径
+        const pathsV1 = [
+          [10, 0, -10],
+          [10, 0, 10],
+          [-10, 0, 10],
+          [-10, 0, -10],
+          [10, 0, -10],
+        ];
+        // 1.向y方向拉伸顶点
+        const pathsV2 = pathsV1.reduce((arr, [x, y, z]) => {
+          arr.push([
+            [x, y, z],
+            [x, y + height, z],
+          ]);
+          return arr;
+        }, []);
+        // 2.解析需要渲染的四边形 每4个顶点为一组
+        const verticesByFour = pathsV2.reduce((arr, item, i) => {
+          if (i === pathsV2.length - 1) return arr;
+          arr.push([item, pathsV2[i + 1]]);
+          return arr;
+        }, []);
+        // 3.将四边形面转换为需要渲染的三顶点面
+        const verticesByThree = verticesByFour.reduce((arr, item) => {
+          const [[point1, point2], [point3, point4]] = item;
+          Í;
+          return arr.concat(
+            ...point1,
+            ...point2,
+            ...point3,
+            ...point3,
+            ...point4,
+            ...point2
+          );
+        }, []);
+
+        var geometry2 = new THREE.BufferGeometry();
+        const vertices = new Float32Array();
+        geometry2.setAttribute(
+          "position",
+          new THREE.BufferAttribute(new Float32Array(verticesByThree), 3)
+        );
+        console.log(geometry2);
+
+        var mesh2 = new THREE.Mesh(geometry2, material);
+        scene.add(mesh2);
+
+        animationList.push(() => {
+          // mesh.material.uniforms.time.value += clock.getDelta() * speed;
+        });
+      }
+
+      main();
+    </script>
+  </body>
+</html>

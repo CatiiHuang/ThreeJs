@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import * as util from "./js/util.js";
+      import * as THREE from "./node_modules/three/build/three.module.js";
+      import { OrbitControls } from "./node_modules/three/examples/jsm/controls/OrbitControls.js";
+      import { creatWallByPath } from "./js/effect.js";
+      const scene = util.initScene();
+      const stats = util.initStats();
+      const camera = util.initCamera();
+      const renderer = util.initRender();
+      const controls = new OrbitControls(camera, renderer.domElement);
+      util.windowReSize(renderer, camera);
+      util.addAxisHelper(scene);
+      // 灯光
+      util.addAmbientLight(scene);
+      util.addDirectionalLight(scene);
+
+      /**
+       * 创建透明墙体材质
+       * option =>
+       * params height color opacity
+       * **/
+      const createOpacityWallMat = ({
+        height = 10,
+        color = "#00ffff",
+        opacity = 0.5,
+        order = 5,
+        speed = 1,
+      }) => {
+        // 顶点着色器
+        const vertexShader = `
+          uniform vec3 u_color;
+
+          uniform float time;
+          uniform float u_height;
+          varying float v_opacity;
+
+          void main() {
+              vec3 vPosition = position;
+              v_opacity = mix(1.0, 0.0, position.y / u_height * 1.0) * (1.0 + sin(time) * 0.5);
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(vPosition, 1);
+          }
+       `;
+        // 片元着色器
+        const fragmentShader = `
+          uniform vec3 u_color;
+          uniform float u_opacity;
+          varying float v_opacity;
+          void main() {
+              gl_FragColor = vec4(u_color, v_opacity * u_opacity);
+          }
+        `;
+
+        return new THREE.ShaderMaterial({
+          uniforms: {
+            u_height: {
+              value: height,
+            },
+            u_opacity: {
+              value: opacity,
+            },
+            u_color: {
+              value: new THREE.Color(color),
+            },
+            time: {
+              value: 0,
+            },
+            speed: {
+              value: speed,
+            },
+          },
+          transparent: true,
+          depthWrite: false,
+          depthTest: false,
+          side: THREE.DoubleSide,
+          vertexShader: vertexShader,
+          fragmentShader: fragmentShader,
+        });
+      };
+      // 动画
+      const animationList = [];
+      const clock = new THREE.Clock();
+      // 路径
+      const path = [
+        [80, 0, -40],
+        [10, 0, 0],
+        [60, 0, 50],
+        [0, 0, 0],
+        [-60, 0, 50],
+        [-50, 0, -30],
+        [80, 0, -40],
+      ];
+      const material = createOpacityWallMat({ height: 15, speed: 8 });
+      const wallMesh = creatWallByPath({
+        path,
+        material,
+        height: 15,
+      });
+      // 动画
+      animationList.push(() => {
+        wallMesh.material.uniforms.time.value +=
+          clock.getDelta() * wallMesh.material.uniforms.speed.value;
+      });
+      scene.add(wallMesh);
+
+      // 地面
+      const groundMesh = new THREE.Mesh(
+        new THREE.PlaneBufferGeometry(200, 120),
+        new THREE.MeshPhongMaterial({
+          color: 0x202020,
+          shininess: 0,
+          side: THREE.DoubleSide,
+        })
+      );
+      groundMesh.rotation.x = -Math.PI / 2;
+      groundMesh.position.y = -1;
+      scene.add(groundMesh);
+
+      // 渲染方法
+      function render() {
+        animationList.forEach((animate) => animate());
+        renderer.render(scene, camera);
+        stats.update();
+        requestAnimationFrame(render);
+      }
+      render();
+    </script>
+  </body>
+</html>

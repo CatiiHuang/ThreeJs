@@ -1,4 +1,5 @@
 import * as THREE from "../node_modules/three/build/three.module.js";
+import { OrbitControls } from "../node_modules/three/examples/jsm/controls/OrbitControls.js";
 import Stats from "./stats.module.js";
 // 初始化场景
 export const initScene = () => {
@@ -14,6 +15,7 @@ export const initCamera = (z = 100) => {
     100000
   );
   camera.position.z = z;
+  camera.position.y = z;
   return camera;
 };
 
@@ -28,6 +30,11 @@ export const initRender = () => {
   return renderer;
 };
 
+// 初始化控制器
+export const initOrbitControls = (camera, renderer) => {
+  return new OrbitControls(camera, renderer.domElement);
+};
+
 // 初始化性能监视器
 export const initStats = () => {
   const stats = new Stats();
@@ -39,7 +46,7 @@ export const initStats = () => {
 };
 
 // 窗口改变
-export const WinReSize = (renderer, camera) => () => {
+export const windowReSize = (renderer, camera) => () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();

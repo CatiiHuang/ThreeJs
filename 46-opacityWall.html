@@ -13,62 +13,35 @@
   </head>
   <body>
     <script type="module">
+      import * as util from "./js/util.js";
       import * as THREE from "./node_modules/three/build/three.module.js";
       import { OrbitControls } from "./node_modules/three/examples/jsm/controls/OrbitControls.js";
-      // 初始化
-      function initScene() {
-        // 场景
-        const scene = new THREE.Scene();
-        // 相机
-        const camera = new THREE.PerspectiveCamera(
-          70,
-          window.innerWidth / window.innerHeight,
-          1,
-          100000
-        );
-        camera.position.set(0, 50, 0);
-        camera.position.y = 50;
-        // 渲染器
-        const renderer = new THREE.WebGLRenderer({
-          antialias: true,
-          //   alpha: true,
-        });
-        renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
-        // 环境光
-        const light = new THREE.AmbientLight(0xffffff, 0.4);
+      import { creatWallByPath } from "./js/effect.js";
+      const scene = util.initScene();
+      const stats = util.initStats();
+      const camera = util.initCamera();
+      const renderer = util.initRender();
+      const controls = new OrbitControls(camera, renderer.domElement);
+      util.windowReSize(renderer, camera);
+      util.addAxisHelper(scene);
+      // 灯光
+      util.addAmbientLight(scene);
+      util.addDirectionalLight(scene);
 
-        scene.add(light);
-        // 控制器
-        const controls = new OrbitControls(camera, renderer.domElement);
-        scene.add(new THREE.AxesHelper(30));
-        window.onresize = () => {
-          renderer.setSize(window.innerWidth, window.innerHeight);
-          camera.aspect = window.innerWidth / window.innerHeight;
-          camera.updateProjectionMatrix();
-        };
-        //时钟
-        const clock = new THREE.Clock();
-        // 动画序列
-        const animationList = [];
-        // 渲染
-        function render() {
-          animationList.forEach((animate) => animate());
-          renderer.render(scene, camera);
-          requestAnimationFrame(render);
-        }
-        render();
-        return {
-          clock,
-          scene,
-          camera,
-          renderer,
-          animationList,
-        };
-      }
-      // 顶点着色器
-      const vertexShader = `
+      /**
+       * 创建透明墙体材质
+       * option =>
+       * params height color opacity
+       * **/
+      const createOpacityWallMat = ({
+        height = 10,
+        color = "#00ffff",
+        opacity = 0.5,
+        order = 5,
+        speed = 1,
+      }) => {
+        // 顶点着色器
+        const vertexShader = `
           uniform vec3 u_color;
 
           uniform float time;
@@ -81,42 +54,17 @@
               gl_Position = projectionMatrix * modelViewMatrix * vec4(vPosition, 1);
           }
        `;
-      // 片元着色器
-      const fragmentShader = ` 
+        // 片元着色器
+        const fragmentShader = `
           uniform vec3 u_color;
           uniform float u_opacity;
           varying float v_opacity;
-          void main() { 
+          void main() {
               gl_FragColor = vec4(u_color, v_opacity * u_opacity);
           }
         `;
 
-      const { scene, clock, camera, animationList } = initScene();
-      //
-      function main() {
-        const { radius, height, opacity, color, speed, renderOrder } = {
-          position: {
-            x: 0,
-            y: 0,
-            z: 0,
-          },
-          speed: 2,
-          color: "#00ffff",
-          opacity: 0.5,
-          radius: 20,
-          height: 10,
-          renderOrder: 5,
-        };
-
-        const geometry = new THREE.CylinderGeometry(
-          radius,
-          radius,
-          height,
-          32,
-          1,
-          true
-        );
-        const material = new THREE.ShaderMaterial({
+        return new THREE.ShaderMaterial({
           uniforms: {
             u_height: {
               value: height,
@@ -130,6 +78,9 @@
             time: {
               value: 0,
             },
+            speed: {
+              value: speed,
+            },
           },
           transparent: true,
           depthWrite: false,
@@ -138,65 +89,54 @@
           vertexShader: vertexShader,
           fragmentShader: fragmentShader,
         });
-        const mesh = new THREE.Mesh(geometry, material);
-        mesh.renderOrder = renderOrder || 1;
-        scene.add(mesh);
+      };
+      // 动画
+      const animationList = [];
+      const clock = new THREE.Clock();
+      // 路径
+      const path = [
+        [80, 0, -40],
+        [10, 0, 0],
+        [60, 0, 50],
+        [0, 0, 0],
+        [-60, 0, 50],
+        [-50, 0, -30],
+        [80, 0, -40],
+      ];
+      const material = createOpacityWallMat({ height: 15, speed: 8 });
+      const wallMesh = creatWallByPath({
+        path,
+        material,
+        height: 15,
+      });
+      // 动画
+      animationList.push(() => {
+        wallMesh.material.uniforms.time.value +=
+          clock.getDelta() * wallMesh.material.uniforms.speed.value;
+      });
+      scene.add(wallMesh);
 
-        // line
+      // 地面
+      const groundMesh = new THREE.Mesh(
+        new THREE.PlaneBufferGeometry(200, 120),
+        new THREE.MeshPhongMaterial({
+          color: 0x202020,
+          shininess: 0,
+          side: THREE.DoubleSide,
+        })
+      );
+      groundMesh.rotation.x = -Math.PI / 2;
+      groundMesh.position.y = -1;
+      scene.add(groundMesh);
 
-        // 规划路径
-        const pathsV1 = [
-          [10, 0, -10],
-          [10, 0, 10],
-          [-10, 0, 10],
-          [-10, 0, -10],
-          [10, 0, -10],
-        ];
-        // 1.向y方向拉伸顶点
-        const pathsV2 = pathsV1.reduce((arr, [x, y, z]) => {
-          arr.push([
-            [x, y, z],
-            [x, y + height, z],
-          ]);
-          return arr;
-        }, []);
-        // 2.解析需要渲染的四边形 每4个顶点为一组
-        const verticesByFour = pathsV2.reduce((arr, item, i) => {
-          if (i === pathsV2.length - 1) return arr;
-          arr.push([item, pathsV2[i + 1]]);
-          return arr;
-        }, []);
-        // 3.将四边形面转换为需要渲染的三顶点面
-        const verticesByThree = verticesByFour.reduce((arr, item) => {
-          const [[point1, point2], [point3, point4]] = item;
-          Í;
-          return arr.concat(
-            ...point1,
-            ...point2,
-            ...point3,
-            ...point3,
-            ...point4,
-            ...point2
-          );
-        }, []);
-
-        var geometry2 = new THREE.BufferGeometry();
-        const vertices = new Float32Array();
-        geometry2.setAttribute(
-          "position",
-          new THREE.BufferAttribute(new Float32Array(verticesByThree), 3)
-        );
-        console.log(geometry2);
-
-        var mesh2 = new THREE.Mesh(geometry2, material);
-        scene.add(mesh2);
-
-        animationList.push(() => {
-          // mesh.material.uniforms.time.value += clock.getDelta() * speed;
-        });
+      // 渲染方法
+      function render() {
+        animationList.forEach((animate) => animate());
+        renderer.render(scene, camera);
+        stats.update();
+        requestAnimationFrame(render);
       }
-
-      main();
+      render();
     </script>
   </body>
 </html>

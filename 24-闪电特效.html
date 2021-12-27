@@ -26,7 +26,7 @@
       const camera = util.initCamera(400);
       camera.position.y = 150;
       const renderer = util.initRender();
-      window.onresize = util.WinReSize(renderer, camera);
+      // window.onresize = util.WinReSize(renderer, camera);
       const controls = new OrbitControls(camera, renderer.domElement);
       util.addAxisHelper(scene);
 

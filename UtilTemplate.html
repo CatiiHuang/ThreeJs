@@ -1,4 +1,3 @@
-0  ` 122h2·· 21·112`   `````````````````````````````````1`tml>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -15,18 +14,18 @@
     <script type="module">
       import * as util from "./js/util.js";
       import * as THREE from "./node_modules/three/build/three.module.js";
-      import {creatWallByPath } from "./js/effect.js"
+      import { creatWallByPath } from "./js/effect.js";
 
       const scene = util.initScene();
       const stats = util.initStats();
       const camera = util.initCamera();
       const renderer = util.initRender();
       const controls = util.initOrbitControls(camera, renderer);
-      util.windowReSize(renderer, camera); 
+      util.windowReSize(renderer, camera);
       util.addAxisHelper(scene);
       util.addAmbientLight(scene);
       util.addDirectionalLight(scene);
-      
+
       // 渲染函数
       const render = () => {
         renderer.render(scene, camera);
@@ -48,7 +47,7 @@
         const wallMesh = creatWallByPath({ path });
         scene.add(wallMesh);
       };
-      
+
       main();
       render();
     </script>

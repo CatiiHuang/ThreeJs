@@ -23,17 +23,46 @@ export const creatWallByPath = ({ height = 10, path = [], material }) => {
   const verticesByThree = verticesByFour.reduce((arr, item) => {
     const [[point1, point2], [point3, point4]] = item;
     return arr.concat(
-      ...point1,
       ...point2,
+      ...point1,
       ...point4,
+      ...point1,
       ...point3,
-      ...point4,
-      ...point1
+      ...point4
     );
   }, []);
   const geometry = new THREE.BufferGeometry();
-  const vertices = new Float32Array(new Float32Array(verticesByThree));
+  // 4. 设置position
+  const vertices = new Float32Array(verticesByThree);
   geometry.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
+  // 5. 设置uv 6个点为一个周期 [0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1]
+  geometry.computeBoundingBox();
+  const { min, max } = geometry.boundingBox;
+  const rangeX = min.x - max.x;
+  // 分组
+  const pointsGroupBy18 = new Array(verticesByThree.length / 3 / 6)
+    .fill(0)
+    .map((item, i) => {
+      return verticesByThree.slice(i * 3 * 6, (i + 1) * 3 * 6);
+    });
+  console.log(pointsGroupBy18);
+  const pointsGroupBy63 = pointsGroupBy18.map((item, i) => {
+    return new Array(item.length / 3)
+      .fill(0)
+      .map((it, i) => item.slice(i * 3, (i + 1) * 3));
+  });
+  const uvs = [].concat(
+    ...pointsGroupBy63.map((item) => {
+      const point0 = item[0];
+      const point5 = item[5];
+      const distance =
+        new THREE.Vector3(...point0).distanceTo(new THREE.Vector3(...point5)) /
+        10;
+      return [0, 1, 0, 0, distance, 1, 0, 0, distance, 0, distance, 1];
+    })
+  );
+  const uv = new Float32Array(uvs);
+  geometry.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
   const meshMat =
     material ||
     new THREE.MeshBasicMaterial({
@@ -63,7 +92,7 @@ export const createLineByPath = ({ path = [], material }) => {
  * option =>
  * params height color opacity
  * **/
-const createOpacityWallMat = ({
+export const createOpacityWallMat = ({
   height = 10,
   color = "#00ffff",
   opacity = 0.5,

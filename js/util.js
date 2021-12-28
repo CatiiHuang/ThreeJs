@@ -71,3 +71,27 @@ export const addDirectionalLight = (scene) => {
 export const addAxisHelper = (scene, long = 50) => {
   scene.add(new THREE.AxesHelper(long));
 };
+
+// 经纬度转xyz坐标
+export const getPosition = (lng, lat, radius) => {
+  const phi = (180 + lng) * (Math.PI / 180);
+  const theta = (90 - lat) * (Math.PI / 180);
+  return {
+    x: -radius * Math.sin(theta) * Math.cos(phi),
+    y: radius * Math.cos(theta),
+    z: radius * Math.sin(theta) * Math.sin(phi),
+  };
+};
+// 经纬度转模块图
+export const lonLat2Mercator = (lng, lat, center) => {
+  const x = (lng / 180.0) * 20037508.3427892;
+  let y = (Math.PI / 180.0) * lat;
+  const z = 0;
+  const tmp = Math.PI / 4.0 + y / 2.0;
+  y = (20037508.3427892 * Math.log(Math.tan(tmp))) / Math.PI;
+  return {
+    x: x / 100000 - center.x,
+    y: y / 100000 - center.y,
+    z: z / 100000 - center.z,
+  };
+};

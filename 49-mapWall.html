@@ -1,0 +1,87 @@
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import * as util from "./js/util.js";
+      import * as THREE from "./node_modules/three/build/three.module.js";
+      import CQgeoJson from "./data/cq_geo_json.js";
+      import CHINAgeoJson from "./data/china_geo_json.js";
+      import { creatWallByPath, createFlowWallMat } from "./js/effect.js";
+
+      const scene = util.initScene();
+      const stats = util.initStats();
+      const camera = util.initCamera();
+      const renderer = util.initRender();
+      const controls = util.initOrbitControls(camera, renderer);
+      util.windowReSize(renderer, camera);
+      util.addAxisHelper(scene);
+      util.addAmbientLight(scene);
+      util.addDirectionalLight(scene);
+
+      // 渲染函数
+      const render = () => {
+        renderer.render(scene, camera);
+        stats.update();
+        requestAnimationFrame(render);
+      };
+
+      // 解析出所有的图形集合
+      const parseGeoJson = ({ features }) => {
+        if (!features.length) return [];
+        return features.reduce((areas, item) => {
+          const { coordinates } = item.geometry;
+          return areas.concat(
+            coordinates.reduce((careas, citem) => {
+              return careas.concat(citem);
+            }, [])
+          );
+        }, []);
+      };
+
+      // 绘制球形路径
+      const drawEarthWall = (geoJson, height = 1) => {
+        // 解析路径数据
+        const positionArrays = parseGeoJson(geoJson);
+        // 构建透明墙体材质
+        const material = createFlowWallMat({});
+        const earthWallGroup = new THREE.Group();
+        positionArrays.forEach((item) => {
+          const center = new THREE.Vector3(115.312103, 40.997497, 0);
+          const path = item.reduce((arr, [lng, lat]) => {
+            const p1 = util.lonLat2Mercator(lng, lat, center);
+            return arr.concat([[p1.x, p1.z, -p1.y]]);
+          }, []);
+          const wallMesh = creatWallByPath({
+            path,
+            material,
+            height,
+          });
+          earthWallGroup.add(wallMesh);
+        });
+        return earthWallGroup;
+      };
+
+      const main = () => {
+        // 绘制中国地图轮廓
+        const chinaWallMesh = drawEarthWall(CHINAgeoJson, 3);
+        // 绘制重庆轮廓
+        const cqWallMesh = drawEarthWall(CQgeoJson, 3);
+        scene.add(cqWallMesh);
+        scene.add(chinaWallMesh);
+      };
+
+      main();
+      render();
+    </script>
+  </body>
+</html>

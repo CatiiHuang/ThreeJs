@@ -13,6 +13,7 @@ export const initCamera = (z = 100) => {
     1,
     100000
   );
+  camera.position.y = 30;
   camera.position.z = z;
   return camera;
 };

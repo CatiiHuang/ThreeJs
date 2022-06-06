@@ -47,7 +47,7 @@
 
       const LoadGLTF = () => {
         return new Promise((resolve, reject) => {
-          new GLTFLoader().load("./model/cone/scene.gltf", (gltf) => {
+          new GLTFLoader().load("./model/untitled.glb", (gltf) => {
             resolve(gltf.scene.children[0]);
           });
         });
@@ -70,7 +70,7 @@
         scene.add(ellipse);
 
         const satellite = await LoadGLTF();
-        satellite.scale.set(1, 1, 100);
+        satellite.scale.set(0.1, 0.1, 0.1);
         satellite.rotateY(Math.PI / 2);
 
         flow = new Flow(satellite);

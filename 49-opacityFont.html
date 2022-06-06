@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background-color: rgba(0, 0, 0, 0.9);
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import * as THREE from "./node_modules/three/build/three.module.js";
+      import { OrbitControls } from "./node_modules/three/examples/jsm/controls/OrbitControls.js";
+      import { EffectComposer } from "./node_modules/three/examples/jsm/postprocessing/EffectComposer.js";
+      import { UnrealBloomPass } from "./node_modules/three/examples/jsm/postprocessing/UnrealBloomPass.js";
+      import { RenderPass } from "./node_modules/three/examples/jsm/postprocessing/RenderPass.js";
+      import { Line2 } from "./node_modules/three/examples/jsm/lines/Line2.js";
+      import { LineMaterial } from "./node_modules/three/examples/jsm/lines/LineMaterial.js";
+      import { LineGeometry } from "./node_modules/three/examples/jsm/lines/LineGeometry.js";
+      import { Flow } from "./node_modules/three/examples/jsm/modifiers/CurveModifier.js";
+      import { FXAAShader } from "./node_modules/three/examples/jsm/shaders/FXAAShader.js";
+      import { ShaderPass } from "./node_modules/three/examples/jsm/postprocessing/ShaderPass.js";
+      import { GUI } from "./node_modules/three/examples/jsm/libs/dat.gui.module.js";
+      import TWEEN from "./js/tween.module.js";
+
+      let scene, camera, renderer, bloomPass, bloomComposer, finalComposer;
+      const animations = [];
+
+      const BLOOM_SCENE = 1;
+      const bloomLayer = new THREE.Layers();
+      bloomLayer.set(BLOOM_SCENE);
+      const darkMaterial = new THREE.MeshBasicMaterial({
+        color: "black",
+        opacity: 0,
+      });
+      const materials = {};
+      const params = {
+        exposure: 0,
+        bloomStrength: 4,
+        bloomThreshold: 0,
+        bloomRadius: 0.2,
+      };
+      const initGUI = () => {
+        const gui = new GUI();
+        gui.add(params, "exposure", 0.1, 10).onChange(function (value) {
+          renderer.toneMappingExposure = Math.pow(value, 4.0);
+        });
+        gui.add(params, "bloomThreshold", 0.0, 10.0).onChange(function (value) {
+          bloomPass.threshold = Number(value);
+        });
+        gui.add(params, "bloomStrength", 0.0, 10.0).onChange(function (value) {
+          bloomPass.strength = Number(value);
+        });
+        gui
+          .add(params, "bloomRadius", 0.0, 10.0)
+          .step(0.01)
+          .onChange(function (value) {
+            bloomPass.radius = Number(value);
+          });
+      };
+      const init = () => {
+        // 场景
+        scene = new THREE.Scene();
+        // 相机
+        camera = new THREE.PerspectiveCamera(
+          70,
+          window.innerWidth / window.innerHeight,
+          1,
+          100000
+        );
+        camera.position.set(0, 50, 150);
+        // 渲染器
+        renderer = new THREE.WebGLRenderer({
+          antialias: true,
+          alpha: true,
+        });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+        // 环境光
+        const light = new THREE.AmbientLight(0xffffff, 0.1);
+        scene.add(light);
+        // 控制器
+        const controls = new OrbitControls(camera, renderer.domElement);
+        // scene.add(new THREE.AxesHelper(100));
+        window.onresize = () => {
+          renderer.setSize(window.innerWidth, window.innerHeight);
+          camera.aspect = window.innerWidth / window.innerHeight;
+          camera.updateProjectionMatrix();
+        };
+      };
+      const initComposer = () => {
+        const effectFXAA = new ShaderPass(FXAAShader);
+        effectFXAA.uniforms["resolution"].value.set(
+          0.6 / window.innerWidth,
+          0.6 / window.innerHeight
+        );
+        effectFXAA.renderToScreen = true;
+        const renderScene = new RenderPass(scene, camera);
+        bloomPass = new UnrealBloomPass(
+          new THREE.Vector2(window.innerWidth, window.innerHeight),
+          1.5,
+          0.4,
+          0.85
+        );
+        bloomPass.threshold = params.bloomThreshold;
+        bloomPass.strength = params.bloomStrength;
+        bloomPass.radius = params.bloomRadius;
+        bloomComposer = new EffectComposer(renderer);
+        bloomComposer.renderToScreen = false;
+        bloomComposer.addPass(renderScene);
+        bloomComposer.addPass(bloomPass);
+        bloomComposer.addPass(effectFXAA);
+        const finalPass = new ShaderPass(
+          new THREE.ShaderMaterial({
+            uniforms: {
+              baseTexture: { value: null },
+              bloomTexture: { value: bloomComposer.renderTarget2.texture },
+            },
+            vertexShader: `varying vec2 vUv;void main() {vUv = uv;gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );}`,
+            fragmentShader: `uniform sampler2D baseTexture;uniform sampler2D bloomTexture;varying vec2 vUv;void main() {gl_FragColor = ( texture2D( baseTexture, vUv ) + vec4( 1.0 ) * texture2D( bloomTexture, vUv ) );}`,
+            defines: {},
+          }),
+          "baseTexture"
+        );
+        finalPass.needsSwap = true;
+        finalComposer = new EffectComposer(renderer);
+        finalComposer.addPass(renderScene);
+        finalComposer.addPass(finalPass);
+        finalComposer.addPass(effectFXAA);
+      };
+
+      const addOpacityFont = () => {
+        new THREE.FontLoader().load("/font/TTTGB.json", (font) => {
+          const textGeo = new THREE.TextGeometry("AI指纹已添加！！", {
+            font: font,
+            size: 20,
+            height: 5,
+            curveSegments: 12,
+            bevelThickness: 10,
+            opacity: 0,
+            bevelSize: 8,
+            bevelSegments: 5,
+          });
+          const material = new THREE.MeshPhongMaterial({
+            color: 0x00ffff,
+            flatShading: true,
+            transparent: true,
+          });
+          const textMesh = new THREE.Mesh(textGeo, material);
+          textMesh.position.y = -20;
+          textMesh.layers.enable(BLOOM_SCENE);
+
+          new TWEEN.Tween(textMesh)
+            .to(
+              {
+                position: { y: 40 },
+                material: {
+                  opacity: 0.05,
+                },
+              },
+              1000
+            )
+            .delay(100)
+            .repeat(Infinity)
+            .start();
+          textGeo.computeBoundingBox();
+          textGeo.center();
+          scene.add(textMesh);
+        });
+      };
+
+      const main = () => {
+        addOpacityFont();
+      };
+
+      const animate = () => {
+        TWEEN.update();
+      };
+
+      const render = () => {
+        animate();
+        scene.traverse((obj) => {
+          if (obj.isMesh && bloomLayer.test(obj.layers) === false) {
+            materials[obj.uuid] = obj.material;
+            obj.material = darkMaterial;
+          }
+        });
+        bloomComposer.render();
+        scene.traverse((obj) => {
+          if (materials[obj.uuid]) {
+            obj.material = materials[obj.uuid];
+            delete materials[obj.uuid];
+          }
+        });
+        finalComposer.render();
+        // renderer.render(scene, camera);
+        requestAnimationFrame(render);
+      };
+      init();
+      initComposer();
+      initGUI();
+      main();
+      render();
+    </script>
+  </body>
+</html>

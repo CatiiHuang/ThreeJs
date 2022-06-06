@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import * as THREE from "./node_modules/three/build/three.module.js";
+      import { OrbitControls } from "./node_modules/three/examples/jsm/controls/OrbitControls.js";
+      import { Line2 } from "./node_modules/three/examples/jsm/lines/Line2.js";
+      import { LineMaterial } from "./node_modules/three/examples/jsm/lines/LineMaterial.js";
+      import { LineGeometry } from "./node_modules/three/examples/jsm/lines/LineGeometry.js";
+
+      const { scene, camera, renderer } = initScene();
+      const anmations = [];
+
+      (function () {
+        main();
+        render();
+        winreSize();
+      })();
+
+      function main() {
+        // 轨迹曲线线
+        const curve = new THREE.CatmullRomCurve3(
+          [
+            new THREE.Vector3(-20, 30, 4),
+            new THREE.Vector3(20, 30, 4),
+            new THREE.Vector3(20, 0, 4),
+            new THREE.Vector3(-20, 0, 4),
+            new THREE.Vector3(-20, -30, 4),
+            new THREE.Vector3(20, -30, 4),
+
+            new THREE.Vector3(20, -30, -4),
+            new THREE.Vector3(-20, -30, -4),
+            new THREE.Vector3(-20, 0, -4),
+            new THREE.Vector3(20, 0, -4),
+            new THREE.Vector3(20, 30, -4),
+            new THREE.Vector3(-20, 30, -4),
+            new THREE.Vector3(-20, 30, 4),
+          ],
+          false,
+          "catmullrom",
+          0.05
+        );
+        // 轨迹线
+        const points = curve.getPoints(100).reduce((arr, item) => {
+          return arr.concat(item.x, item.y, item.z);
+        }, []);
+        const geometry = new LineGeometry();
+        geometry.setPositions(points);
+        const material = new LineMaterial({
+          color: 0x2e91c2,
+          linewidth: 4,
+        });
+        material.resolution.set(window.innerWidth, window.innerHeight);
+        const line = new Line2(geometry, material);
+        line.computeLineDistances();
+        scene.add(line);
+
+        // 移动线
+        new Array(1).fill(0).forEach((it, i) => {
+          const movingLine = createMovingLine(curve, i * 100);
+          anmations.push(movingLine);
+          scene.add(movingLine.mesh);
+        });
+      }
+
+      function anmation() {
+        anmations.forEach((item) => {
+          item.index + 1 > item.linePointsV3.length - item.verticNum
+            ? (item.index = 0)
+            : (item.index += 3);
+          item.mesh.geometry.setPositions(
+            item.linePointsV3
+              .slice(item.index, item.index + item.verticNum)
+              .reduce((arr, item) => {
+                return arr.concat(item.x, item.y, item.z);
+              }, [])
+          );
+        });
+      }
+
+      function createMovingLine(
+        curve,
+        index = 0,
+        color = ["#00ffff", "#224242"],
+        pointNum = 400,
+        verticNum = 30
+      ) {
+        const lightGeometry = new LineGeometry();
+        const pointsV3 = curve.getPoints(pointNum);
+        lightGeometry.setPositions(
+          pointsV3.slice(index, index + verticNum).reduce((arr, item) => {
+            return arr.concat(item.x, item.y, item.z);
+          }, [])
+        );
+        const lightMaterial = new LineMaterial({
+          transparent: true,
+          side: THREE.DoubleSide,
+          linewidth: 12,
+          depthTest: false, // 慎用
+          vertexColors: THREE.VertexColors,
+        });
+        // 渐变色处理
+        const colors = gradientColors(color[1], color[0], verticNum);
+        const colorArr = colors.reduce((arr, item) => {
+          const Tcolor = new THREE.Color(item);
+          return arr.concat(Tcolor.r, Tcolor.g, Tcolor.b);
+        }, []);
+        lightGeometry.setColors(colorArr);
+        lightMaterial.resolution.set(window.innerWidth, window.innerHeight);
+        const lightLine = new Line2(lightGeometry, lightMaterial);
+        lightLine.computeLineDistances();
+        return {
+          index,
+          verticNum,
+          mesh: lightLine,
+          linePointsV3: pointsV3,
+        };
+      }
+
+      // 颜色差值
+      function gradientColors(start, end, steps, gamma) {
+        const parseColor = function (hexStr) {
+          return hexStr.length === 4
+            ? hexStr
+                .substr(1)
+                .split("")
+                .map(function (s) {
+                  return 0x11 * parseInt(s, 16);
+                })
+            : [
+                hexStr.substr(1, 2),
+                hexStr.substr(3, 2),
+                hexStr.substr(5, 2),
+              ].map(function (s) {
+                return parseInt(s, 16);
+              });
+        };
+        const pad = function (s) {
+          return s.length === 1 ? `0${s}` : s;
+        };
+        let j;
+        let ms;
+        let me;
+        const output = [];
+        const so = [];
+        // eslint-disable-next-line
+        gamma = gamma || 1;
+        const normalize = function (channel) {
+          // eslint-disable-next-line
+          return Math.pow(channel / 255, gamma);
+        };
+        // eslint-disable-next-line
+        start = parseColor(start).map(normalize);
+        // eslint-disable-next-line
+        end = parseColor(end).map(normalize);
+        for (let i = 0; i < steps; i++) {
+          ms = i / (steps - 1);
+          me = 1 - ms;
+          for (j = 0; j < 3; j++) {
+            // eslint-disable-next-line
+            so[j] = pad(
+              Math.round(
+                Math.pow(start[j] * me + end[j] * ms, 1 / gamma) * 255
+              ).toString(16)
+            );
+          }
+          output.push(`#${so.join("")}`);
+        }
+        return output;
+      }
+
+      function render() {
+        anmation();
+        renderer.render(scene, camera);
+        requestAnimationFrame(render);
+      }
+
+      function initScene() {
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(
+          70,
+          window.innerWidth / window.innerHeight,
+          1,
+          100000
+        );
+        camera.position.set(50, 50, 50);
+        const renderer = new THREE.WebGLRenderer({
+          antialias: true,
+          //   alpha: true,
+        });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+        const light = new THREE.AmbientLight(0xffffff, 0.4);
+        scene.add(light);
+        const controls = new OrbitControls(camera, renderer.domElement);
+        scene.add(new THREE.AxesHelper(100));
+        return {
+          scene,
+          camera,
+          renderer,
+        };
+      }
+
+      function winreSize() {
+        window.onresize = () => {
+          renderer.setSize(window.innerWidth, window.innerHeight);
+          camera.aspect = window.innerWidth / window.innerHeight;
+          camera.updateProjectionMatrix();
+        };
+      }
+    </script>
+  </body>
+</html>

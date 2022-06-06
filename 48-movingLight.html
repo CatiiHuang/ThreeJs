@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import * as THREE from "./node_modules/three/build/three.module.js";
+      import { OrbitControls } from "./node_modules/three/examples/jsm/controls/OrbitControls.js";
+      import TWEEN from "./js/tween.module.js";
+
+      const { scene, camera, renderer } = initScene();
+      let tween = null;
+
+      (function () {
+        main();
+        render();
+      })();
+
+      function main() {
+        // floor
+        const geometryFloor = new THREE.BoxGeometry(200, 200, 1);
+        const materialFloor = new THREE.MeshLambertMaterial({
+          color: 0x2b2b2b,
+        });
+        const meshFloor = new THREE.Mesh(geometryFloor, materialFloor);
+        meshFloor.rotateX(Math.PI * 0.5);
+        scene.add(meshFloor);
+
+        // fontBG
+        const bgGeomeTry = new THREE.BoxGeometry(80, 20, 2);
+        const bgMaterial = new THREE.MeshStandardMaterial({
+          color: 0x00aaaa,
+        });
+        const bgMesh = new THREE.Mesh(bgGeomeTry, bgMaterial);
+        bgMesh.geometry.computeBoundingBox();
+        bgMesh.receiveShadow = true;
+        bgMesh.castShadow = true;
+        const box = bgMesh.geometry.boundingBox;
+        bgMesh.translateY(box.getSize().y * 0.5);
+        scene.add(bgMesh);
+
+        // const colneMesh = bgMesh.clone();
+        // colneMesh.position.z = 21;
+        // scene.add(colneMesh);
+
+        // font
+        new THREE.FontLoader().load("/font/font.json", (font) => {
+          const textGeo = new THREE.TextGeometry("Hello three.js!", {
+            font: font,
+            size: 8,
+            height: 2,
+            curveSegments: 12,
+            // bevelEnabled: true,
+            bevelThickness: 10,
+            bevelSize: 5,
+            bevelSegments: 5,
+          });
+          const material = new THREE.MeshPhongMaterial({
+            color: 0x00eeee,
+            flatShading: true,
+          });
+          const textMesh = new THREE.Mesh(textGeo, material);
+          textMesh.geometry.center();
+          textMesh.translateY(8);
+          textMesh.translateZ(2);
+          scene.add(textMesh);
+        });
+
+        // light
+
+        const pointLight = new THREE.PointLight(0xff0000, 100, 20);
+        pointLight.position.set(-40, 7, 10);
+        scene.add(pointLight);
+
+        tween = new TWEEN.Tween(pointLight.position)
+          .to({ x: 40 }, 1000)
+          .yoyo(true)
+          .repeat(Infinity)
+          .start();
+      }
+
+      function render() {
+        console.log(TWEEN);
+        TWEEN.update();
+        renderer.render(scene, camera);
+        requestAnimationFrame(render);
+      }
+      function initScene() {
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(
+          70,
+          window.innerWidth / window.innerHeight,
+          1,
+          100000
+        );
+        camera.position.set(0, 30, 100);
+        const renderer = new THREE.WebGLRenderer({
+          antialias: true,
+          //   alpha: true,
+        });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+        const light = new THREE.AmbientLight(0xffffff, 0.75);
+        scene.add(light);
+        const controls = new OrbitControls(camera, renderer.domElement);
+        scene.add(new THREE.AxesHelper(100));
+        window.onresize = () => {
+          renderer.setSize(window.innerWidth, window.innerHeight);
+          camera.aspect = window.innerWidth / window.innerHeight;
+          camera.updateProjectionMatrix();
+        };
+        return {
+          scene,
+          camera,
+          renderer,
+        };
+      }
+    </script>
+  </body>
+</html>

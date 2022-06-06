@@ -39,11 +39,13 @@
       const parseGeoJson = ({ features }) => {
         if (!features.length) return [];
         return features.reduce((areas, item) => {
-          const { coordinates } = item.geometry;
+          const { coordinates, type } = item.geometry;
           return areas.concat(
-            coordinates.reduce((careas, citem) => {
-              return careas.concat(citem);
-            }, [])
+            type === "MultiPolygon"
+              ? coordinates.reduce((careas, citem) => {
+                  return careas.concat(citem);
+                }, [])
+              : coordinates
           );
         }, []);
       };

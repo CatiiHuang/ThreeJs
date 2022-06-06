@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import * as util from "./js/util.js";
+      import * as THREE from "./node_modules/three/build/three.module.js";
+      import { OrbitControls } from "./node_modules/three/examples/jsm/controls/OrbitControls.js";
+      import { EffectComposer } from "./node_modules/three/examples/jsm/postprocessing/EffectComposer.js";
+      import { UnrealBloomPass } from "./node_modules/three/examples/jsm/postprocessing/UnrealBloomPass.js";
+      import { ShaderPass } from "./node_modules/three/examples/jsm/postprocessing/ShaderPass.js";
+      import { RenderPass } from "./node_modules/three/examples/jsm/postprocessing/RenderPass.js";
+
+      const scene = util.initScene();
+      const stats = util.initStats();
+      const camera = util.initCamera();
+      const renderer = util.initRender();
+      const controls = new OrbitControls(camera, renderer.domElement);
+      util.windowReSize(renderer, camera);
+      // util.addAxisHelper(scene);
+      // 灯光
+      util.addAmbientLight(scene);
+      util.addDirectionalLight(scene);
+
+      // 渲染函数
+      const render = () => {
+        renderer.render(scene, camera);
+        stats.update();
+        requestAnimationFrame(render);
+      };
+
+      /**
+       * 通过path构造路径线
+       *
+       * **/
+      const createLineByPath = ({ path = [], material }) => {
+        console.log(233, path);
+        const lineMat =
+          material ||
+          new THREE.LineBasicMaterial({
+            color: 0xff0000,
+          });
+        const geometry = new THREE.Geometry();
+        geometry.vertices.push(
+          ...path.map(([x, y, z]) => new THREE.Vector3(x, y, z))
+        );
+        return new THREE.Line(geometry, lineMat);
+      };
+
+      /**
+       * option => params height path material
+       * 通过path构建墙体
+       * **/
+      const creatWallByPath = ({ height = 10, path = [], material }) => {
+        // 1.向y方向拉伸顶点
+        const pathsV2 = path.reduce((arr, [x, y, z]) => {
+          arr.push([
+            [x, y, z],
+            [x, y + height, z],
+          ]);
+          return arr;
+        }, []);
+        // 2.解析需要渲染的四边形 每4个顶点为一组
+        const verticesByFour = pathsV2.reduce((arr, item, i) => {
+          if (i === pathsV2.length - 1) return arr;
+          arr.push([item, pathsV2[i + 1]]);
+          return arr;
+        }, []);
+        // 3.将四边形面转换为需要渲染的三顶点面
+        const verticesByThree = verticesByFour.reduce((arr, item) => {
+          const [[point1, point2], [point3, point4]] = item;
+          return arr.concat(
+            ...point1,
+            ...point2,
+            ...point4,
+            ...point3,
+            ...point4,
+            ...point1
+          );
+        }, []);
+        const geometry = new THREE.BufferGeometry();
+        const vertices = new Float32Array(new Float32Array(verticesByThree));
+        geometry.setAttribute(
+          "position",
+          new THREE.BufferAttribute(vertices, 3)
+        );
+        const meshMat =
+          material ||
+          new THREE.MeshBasicMaterial({
+            color: 0x00ffff,
+            side: THREE.DoubleSide,
+          });
+        return new THREE.Mesh(geometry, meshMat);
+      };
+
+      // 地面
+      const groundMesh = new THREE.Mesh(
+        new THREE.PlaneBufferGeometry(200, 120),
+        new THREE.MeshPhongMaterial({
+          color: 0x808080,
+          shininess: 0,
+          side: THREE.DoubleSide,
+        })
+      );
+      groundMesh.rotation.x = -Math.PI / 2;
+      groundMesh.position.y = -1;
+      scene.add(groundMesh);
+
+      // 不规则路径
+      const path = [
+        [80, 0, -40],
+        [10, 0, 0],
+        [60, 0, 50],
+        [0, 10, 0],
+        [-60, 0, 50],
+        [-50, 0, -30],
+        [80, 0, -40],
+      ];
+      const wallMesh = creatWallByPath({ path });
+      const wallLine = createLineByPath({ path });
+      scene.add(wallMesh);
+      scene.add(wallLine);
+
+      // 曲面
+      const curve = new THREE.EllipseCurve(
+        0,
+        -20, // ax, aY
+        10,
+        10, // xRadius, yRadius
+        0,
+        2 * Math.PI, // aStartAngle, aEndAngle
+        false, // aClockwise
+        0 // aRotation
+      );
+      const curvePoints = curve.getPoints(50);
+      const curvePath = curvePoints.map(({ x, y }) => [x, 0, y]);
+      const curveWallMesh = creatWallByPath({ path: curvePath });
+      const curveLine = createLineByPath({ path: curvePath });
+      scene.add(curveWallMesh);
+      scene.add(curveLine);
+
+      render();
+    </script>
+  </body>
+</html>

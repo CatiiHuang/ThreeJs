@@ -1,0 +1,128 @@
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import * as util from "./js/util.js";
+      import * as THREE from "./node_modules/three/build/three.module.js";
+      import { creatWallByPath } from "./js/effect.js";
+
+      const scene = util.initScene();
+      const stats = util.initStats();
+      const camera = util.initCamera();
+      const renderer = util.initRender();
+      const controls = util.initOrbitControls(camera, renderer);
+      util.windowReSize(renderer, camera);
+      util.addAxisHelper(scene);
+      util.addAmbientLight(scene);
+      util.addDirectionalLight(scene);
+
+      const animateList = [];
+      // 渲染函数
+      const render = () => {
+        animateList.forEach((animate) => animate());
+        renderer.render(scene, camera);
+        stats.update();
+        requestAnimationFrame(render);
+      };
+
+      /**
+       * 创建流体墙体材质
+       * option =>
+       * params bgUrl flowUrl
+       * **/
+      const createFlowWallMat = ({ bgUrl, flowUrl }) => {
+        // 顶点着色器
+        const vertexShader = `
+            varying vec2 vUv;
+            varying vec3 fNormal;
+            varying vec3 vPosition;
+            void main(){
+                    vUv = uv;
+                    vPosition = position;
+                    vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+                    gl_Position = projectionMatrix * mvPosition;
+            }
+        `;
+        // 片元着色器
+        const fragmentShader = `
+            uniform float time;
+            varying vec2 vUv;
+            uniform sampler2D flowTexture;
+            uniform sampler2D bgTexture;
+            void main( void ) {
+                vec2 position = vUv;
+                vec4 colora = texture2D( flowTexture, vec2( vUv.x, fract(vUv.y - time )));
+                vec4 colorb = texture2D( bgTexture , position.xy);
+                gl_FragColor = colorb + colorb * colora;
+            }
+        `;
+        const bgTexture = new THREE.TextureLoader().load(
+          bgUrl || "./img/opacityWall.png"
+        );
+        const flowTexture = new THREE.TextureLoader().load(
+          flowUrl ||
+            "https://model.3dmomoda.com/models/da5e99c0be934db7a42208d5d466fd33/0/gltf/F3E2E977BDB335778301D9A1FA4A4415.png"
+          // "https://model.3dmomoda.com/models/47007127aaf1489fb54fa816a15551cd/0/gltf/116802027AC38C3EFC940622BC1632BA.jpg"
+        );
+        // 允许平铺
+        flowTexture.wrapS = THREE.RepeatWrapping;
+        return new THREE.ShaderMaterial({
+          uniforms: {
+            time: {
+              value: 0,
+            },
+            flowTexture: {
+              value: flowTexture,
+            },
+            bgTexture: {
+              value: bgTexture,
+            },
+          },
+          transparent: true,
+          depthWrite: false,
+          depthTest: false,
+          side: THREE.DoubleSide,
+          vertexShader: vertexShader,
+          fragmentShader: fragmentShader,
+        });
+      };
+
+      const main = () => {
+        const path = [
+          [80, 0, -40],
+          [10, 0, 0],
+          [60, 0, 50],
+          [0, 10, 0],
+          [10, 10, 10],
+          [-60, 0, 50],
+          [-50, 0, -30],
+          [80, 0, -40],
+        ];
+        const wallMat = createFlowWallMat({});
+        const wallMesh = creatWallByPath({
+          material: wallMat,
+          path,
+          height: 20,
+        });
+
+        animateList.push(() => {
+          wallMat.uniforms.time.value += 0.01;
+        });
+        scene.add(wallMesh);
+      };
+
+      main();
+      render();
+    </script>
+  </body>
+</html>

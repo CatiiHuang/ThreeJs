@@ -16,19 +16,19 @@
   </head>
   <body>
     <script type="module">
-      import * as THREE from "./node_modules/three/build/three.module.js";
-      import { OrbitControls } from "./node_modules/three/examples/jsm/controls/OrbitControls.js";
-      import { EffectComposer } from "./node_modules/three/examples/jsm/postprocessing/EffectComposer.js";
-      import { UnrealBloomPass } from "./node_modules/three/examples/jsm/postprocessing/UnrealBloomPass.js";
-      import { RenderPass } from "./node_modules/three/examples/jsm/postprocessing/RenderPass.js";
-      import { Line2 } from "./node_modules/three/examples/jsm/lines/Line2.js";
-      import { LineMaterial } from "./node_modules/three/examples/jsm/lines/LineMaterial.js";
-      import { LineGeometry } from "./node_modules/three/examples/jsm/lines/LineGeometry.js";
-      import { Flow } from "./node_modules/three/examples/jsm/modifiers/CurveModifier.js";
-      import { FXAAShader } from "./node_modules/three/examples/jsm/shaders/FXAAShader.js";
-      import { ShaderPass } from "./node_modules/three/examples/jsm/postprocessing/ShaderPass.js";
-      import { GUI } from "./node_modules/three/examples/jsm/libs/dat.gui.module.js";
-      import TWEEN from "./js/tween.module.js";
+      import * as THREE from './node_modules/three/build/three.module.js';
+      import { OrbitControls } from './node_modules/three/examples/jsm/controls/OrbitControls.js';
+      import { EffectComposer } from './node_modules/three/examples/jsm/postprocessing/EffectComposer.js';
+      import { UnrealBloomPass } from './node_modules/three/examples/jsm/postprocessing/UnrealBloomPass.js';
+      import { RenderPass } from './node_modules/three/examples/jsm/postprocessing/RenderPass.js';
+      import { Line2 } from './node_modules/three/examples/jsm/lines/Line2.js';
+      import { LineMaterial } from './node_modules/three/examples/jsm/lines/LineMaterial.js';
+      import { LineGeometry } from './node_modules/three/examples/jsm/lines/LineGeometry.js';
+      import { Flow } from './node_modules/three/examples/jsm/modifiers/CurveModifier.js';
+      import { FXAAShader } from './node_modules/three/examples/jsm/shaders/FXAAShader.js';
+      import { ShaderPass } from './node_modules/three/examples/jsm/postprocessing/ShaderPass.js';
+      import { GUI } from './node_modules/three/examples/jsm/libs/dat.gui.module.js';
+      import TWEEN from './js/tween.module.js';
 
       let scene, camera, renderer, bloomPass, bloomComposer, finalComposer;
       const animations = [];
@@ -37,7 +37,7 @@
       const bloomLayer = new THREE.Layers();
       bloomLayer.set(BLOOM_SCENE);
       const darkMaterial = new THREE.MeshBasicMaterial({
-        color: "black",
+        color: 'black',
         opacity: 0,
       });
       const materials = {};
@@ -49,17 +49,17 @@
       };
       const initGUI = () => {
         const gui = new GUI();
-        gui.add(params, "exposure", 0.1, 10).onChange(function (value) {
+        gui.add(params, 'exposure', 0.1, 10).onChange(function (value) {
           renderer.toneMappingExposure = Math.pow(value, 4.0);
         });
-        gui.add(params, "bloomThreshold", 0.0, 10.0).onChange(function (value) {
+        gui.add(params, 'bloomThreshold', 0.0, 10.0).onChange(function (value) {
           bloomPass.threshold = Number(value);
         });
-        gui.add(params, "bloomStrength", 0.0, 10.0).onChange(function (value) {
+        gui.add(params, 'bloomStrength', 0.0, 10.0).onChange(function (value) {
           bloomPass.strength = Number(value);
         });
         gui
-          .add(params, "bloomRadius", 0.0, 10.0)
+          .add(params, 'bloomRadius', 0.0, 10.0)
           .step(0.01)
           .onChange(function (value) {
             bloomPass.radius = Number(value);
@@ -69,12 +69,7 @@
         // 场景
         scene = new THREE.Scene();
         // 相机
-        camera = new THREE.PerspectiveCamera(
-          70,
-          window.innerWidth / window.innerHeight,
-          1,
-          100000
-        );
+        camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 100000);
         camera.position.set(0, 50, 150);
         // 渲染器
         renderer = new THREE.WebGLRenderer({
@@ -98,7 +93,7 @@
       };
       const initComposer = () => {
         const effectFXAA = new ShaderPass(FXAAShader);
-        effectFXAA.uniforms["resolution"].value.set(
+        effectFXAA.uniforms['resolution'].value.set(
           0.6 / window.innerWidth,
           0.6 / window.innerHeight
         );
@@ -128,7 +123,7 @@
             fragmentShader: `uniform sampler2D baseTexture;uniform sampler2D bloomTexture;varying vec2 vUv;void main() {gl_FragColor = ( texture2D( baseTexture, vUv ) + vec4( 1.0 ) * texture2D( bloomTexture, vUv ) );}`,
             defines: {},
           }),
-          "baseTexture"
+          'baseTexture'
         );
         finalPass.needsSwap = true;
         finalComposer = new EffectComposer(renderer);
@@ -138,8 +133,8 @@
       };
 
       const addOpacityFont = () => {
-        new THREE.FontLoader().load("/font/TTTGB.json", (font) => {
-          const textGeo = new THREE.TextGeometry("AI指纹已添加！！", {
+        new THREE.FontLoader().load('/font/TTTGB.json', (font) => {
+          const textGeo = new THREE.TextGeometry('AI指纹已添加！！', {
             font: font,
             size: 20,
             height: 5,
@@ -161,7 +156,7 @@
           new TWEEN.Tween(textMesh)
             .to(
               {
-                position: { y: 40 },
+                position: { y: 10 },
                 material: {
                   opacity: 0.05,
                 },
@@ -170,6 +165,9 @@
             )
             .delay(100)
             .repeat(Infinity)
+            .onUpdate(() => {
+              console.log(233);
+            })
             .start();
           textGeo.computeBoundingBox();
           textGeo.center();

@@ -1,0 +1,121 @@
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import * as util from './js/util.js';
+      import * as THREE from './node_modules/three/build/three.module.js';
+      import { creatWallByPath } from './js/effect.js';
+      import TWEEN from './js/tween.module.js';
+
+      const scene = util.initScene();
+      const stats = util.initStats();
+      const camera = util.initCamera();
+      const renderer = util.initRender();
+      const controls = util.initOrbitControls(camera, renderer);
+
+      util.windowReSize(renderer, camera);
+      util.addAxisHelper(scene);
+      util.addAmbientLight(scene);
+      util.addDirectionalLight(scene);
+
+      // 渲染函数
+      const render = () => {
+        TWEEN.update();
+        renderer.render(scene, camera);
+        stats.update();
+        requestAnimationFrame(render);
+      };
+
+      const initpointsMeshAnimate = (pointsMesh, targetMesh) => {
+        // 源模型的顶点
+        const originVertices = pointsMesh.geometry.vertices;
+        // 目标模型的顶点
+        const targetVertices = targetMesh.geometry.vertices;
+
+        // 源粒子数大于目标模型顶点数 需减少
+        if (originVertices.length > targetVertices.length) {
+          pointsMesh.geometry.vertices = originVertices.slice(0, targetVertices.length);
+        }
+        // 源粒子数小于目标模型顶点数 需补齐
+        if (originVertices.length < targetVertices.length) {
+          pointsMesh.geometry.vertices = originVertices.concat(
+            new Array(targetVertices.length - originVertices.length)
+              .fill(0)
+              .map(() => new THREE.Vector3())
+          );
+        }
+
+        // 遍历每一个粒子
+        pointsMesh.geometry.vertices.forEach(async (v, i, vertices) => {
+          // 粒子从原始位置到目标位置的平滑移动，完成时间2000ms
+          new TWEEN.Tween({
+            x: vertices[i % originVertices.length].x,
+            y: vertices[i % originVertices.length].y,
+            z: vertices[i % originVertices.length].z,
+          })
+            .to(
+              {
+                x: targetVertices[i].x,
+                y: targetVertices[i].y,
+                z: targetVertices[i].z,
+              },
+              2000
+            )
+            .onUpdate(({ x, y, z }) => {
+              pointsMesh.geometry.vertices[i].set(x, y, z);
+              pointsMesh.geometry.verticesNeedUpdate = true;
+            })
+            .delay(500)
+            .yoyo(true)
+            .repeat(Infinity)
+            .start(); // 开始动画
+        });
+      };
+
+      const main = () => {
+        const material = new THREE.MeshBasicMaterial({ color: 0x008888 });
+
+        // 盒子
+        const cubeGeometry = new THREE.BoxGeometry(40, 40, 40, 20, 20, 20);
+        const cube = new THREE.Mesh(cubeGeometry, material);
+        cube.position.x = -60;
+
+        // 球
+        const ballGeometry = new THREE.SphereGeometry(20, 40, 32);
+        const ball = new THREE.Mesh(ballGeometry.clone(), material);
+        ball.position.x = 60;
+
+        // points
+        const points = new THREE.Points(
+          ballGeometry,
+          new THREE.PointsMaterial({
+            size: 0.4,
+            color: 0x00ffff,
+          })
+        );
+        points.scale.x = 1.5;
+        points.scale.y = 1.5;
+        points.scale.z = 1.5;
+
+        initpointsMeshAnimate(points, cube);
+
+        scene.add(ball);
+        scene.add(cube);
+        scene.add(points);
+      };
+
+      main();
+      render();
+    </script>
+  </body>
+</html>

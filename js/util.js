@@ -1,6 +1,6 @@
-import * as THREE from "../node_modules/three/build/three.module.js";
-import { OrbitControls } from "../node_modules/three/examples/jsm/controls/OrbitControls.js";
-import Stats from "./stats.module.js";
+import * as THREE from '../node_modules/three/build/three.module.js';
+import { OrbitControls } from '../node_modules/three/examples/jsm/controls/OrbitControls.js';
+import Stats from './stats.module.js';
 // 初始化场景
 export const initScene = () => {
   return new THREE.Scene();
@@ -8,13 +8,8 @@ export const initScene = () => {
 
 // 初始化相机
 export const initCamera = (z = 100) => {
-  const camera = new THREE.PerspectiveCamera(
-    70,
-    window.innerWidth / window.innerHeight,
-    1,
-    100000
-  );
-  camera.position.y = 30;
+  const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 100000);
+  camera.position.y = 0;
   camera.position.z = z;
   camera.position.y = z;
   return camera;
@@ -25,6 +20,7 @@ export const initRender = () => {
   const renderer = new THREE.WebGLRenderer({
     antialias: true, // 抗锯齿
   });
+  renderer.setClearColor(0x000000, 1); // 设置清除背景色
   renderer.setPixelRatio(window.devicePixelRatio); // 设置分辨率
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
@@ -39,9 +35,9 @@ export const initOrbitControls = (camera, renderer) => {
 // 初始化性能监视器
 export const initStats = () => {
   const stats = new Stats();
-  stats.domElement.style.position = "absolute";
-  stats.domElement.style.left = "0px";
-  stats.domElement.style.top = "0px";
+  stats.domElement.style.position = 'absolute';
+  stats.domElement.style.left = '0px';
+  stats.domElement.style.top = '0px';
   document.body.appendChild(stats.domElement);
   return stats;
 };
